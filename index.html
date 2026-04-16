@@ -1,0 +1,1907 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AXIS CONFIGURATOR v5.2 — TidalCycles × SuperCollider × Max 9</title>
+
+<!-- SEO PRIMARIO -->
+<meta name="description" content="Generador de configuración para TidalCycles + SuperCollider + Max for Live. Resuelve: lexical error BOM \65279, Variable not in scope d1, exceeded interconnect buffers, silencio sin errores, flonum de Max. Windows, macOS, Linux. Zero backend.">
+<meta name="keywords" content="TidalCycles, SuperCollider, Max for Live, live coding, BootTidal.hs, SuperDirt, BOM, lexical error 65279, Variable not in scope d1, exceeded interconnect buffers, ASIO4ALL, Ableton, OSC, GHCi, GHCup">
+<meta name="author" content="Axis Opus / ouroboros99">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://ouroboros99.github.io/axis-configurator/">
+<!-- OPEN GRAPH -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="AXIS CONFIGURATOR — TidalCycles × SuperCollider × Max for Live">
+<meta property="og:description" content="Genera BootTidal.hs sin BOM, startup.scd con memoria aumentada y scripts de instalación para tu OS. Resuelve los 5 errores que hacen abandonar el setup. Zero backend, un solo archivo HTML.">
+<meta property="og:url" content="https://ouroboros99.github.io/axis-configurator/">
+<meta property="og:image" content="https://ouroboros99.github.io/axis-configurator/og-image.png">
+<!-- SCHEMA.ORG -->
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"AXIS CONFIGURATOR","version":"5.2","description":"Herramienta de configuración para TidalCycles + SuperCollider + Max for Live. Genera BootTidal.hs sin BOM, startup.scd con memoria aumentada, scripts de instalación para Windows, macOS y Linux.","applicationCategory":"DeveloperApplication","operatingSystem":"Windows, macOS, Linux","url":"https://ouroboros99.github.io/axis-configurator/","author":{"@type":"Person","name":"Axis Opus","url":"https://github.com/ouroboros99"},"license":"https://creativecommons.org/licenses/by-nc-sa/4.0/","isAccessibleForFree":true}</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=VT323&display=swap" rel="stylesheet">
+<style>
+/* ══════════ VARIABLES ══════════ */
+:root {
+  --bg:#07070b; --surface:#0d0d14; --surface2:#111120;
+  --border:#18182c; --border-hi:#22223a;
+  --green:#00ff88; --green2:#00cc6e; --green-glow:rgba(0,255,136,.12);
+  --amber:#ffaa00; --amber2:#cc8800;
+  --red:#ff4466; --red2:#cc2244;
+  --blue:#5599ff; --blue2:#4488ee;
+  --text:#c8c8e2; --text-hi:#eeeeff;
+  --muted:#606080; --muted2:#3e3e5a;
+  --transition-lang:opacity .18s ease, transform .18s ease;
+}
+body.dim-mode {
+  --bg:#0f0f1a; --surface:#161626; --surface2:#1c1c30;
+  --border:#20203a; --border-hi:#2a2a48;
+  --text:#d0d0e8; --muted:#707090;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'JetBrains Mono','Courier New',monospace;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;transition:background .35s,color .35s}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,255,136,.016) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,136,.016) 1px,transparent 1px);background-size:42px 42px;pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.022) 3px,rgba(0,0,0,.022) 4px);pointer-events:none;z-index:0}
+
+/* ══════════ I18N — LÓGICA BLINDADA ══════════ */
+/* Por defecto (Español): ocultar todo lo que sea inglés */
+body:not(.lang-en) .lang-en { display: none !important; }
+/* Cuando está en Inglés: ocultar todo lo que sea español */
+body.lang-en .lang-es { display: none !important; }
+
+/* ══════════ HEADER ══════════ */
+.header{position:relative;z-index:10;border-bottom:1px solid var(--border);padding:1.8rem 2rem 1.3rem;background:linear-gradient(160deg,rgba(0,255,136,.05) 0%,transparent 60%)}
+.header-inner{max-width:980px;margin:0 auto;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:1rem}
+.title-vt{font-family:'VT323',monospace;font-size:clamp(2rem,6vw,4.2rem);color:var(--green);text-shadow:0 0 24px var(--green),0 0 48px rgba(0,255,136,.25);letter-spacing:.04em;line-height:1}
+.title-sub{font-size:.7rem;color:var(--muted);letter-spacing:.16em;text-transform:uppercase;margin-top:.35rem}
+.header-meta{display:flex;flex-direction:column;gap:.5rem;align-items:flex-end}
+.header-badges{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.status-badge{display:inline-flex;align-items:center;gap:.5rem;font-size:.66rem;color:var(--green2);border:1px solid rgba(0,204,110,.4);padding:.25rem .7rem;border-radius:2px;background:rgba(0,255,136,.04);letter-spacing:.1em}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.os-badge{display:inline-flex;align-items:center;gap:.4rem;font-size:.66rem;letter-spacing:.1em;padding:.22rem .65rem;border-radius:2px;font-family:'JetBrains Mono',monospace;border:1px solid rgba(85,153,255,.35);background:rgba(85,153,255,.06);color:var(--blue)}
+.header-actions{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.btn-header{font-size:.62rem;letter-spacing:.1em;padding:.24rem .72rem;background:transparent;border:1px solid var(--border-hi);color:var(--muted);cursor:pointer;border-radius:2px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;transition:all .18s;white-space:nowrap}
+.btn-header:hover{border-color:var(--muted);color:var(--text)}
+.btn-header.active{border-color:var(--green2);color:var(--green2)}
+.btn-header.accent{border-color:rgba(85,153,255,.4);color:var(--blue)}
+.btn-header.accent:hover{border-color:var(--blue)}
+.lang-switcher{display:flex;gap:0;border:1px solid var(--border-hi);border-radius:2px;overflow:hidden}
+.lang-btn{font-size:.62rem;letter-spacing:.08em;padding:.24rem .58rem;background:transparent;border:none;border-right:1px solid var(--border-hi);color:var(--muted);cursor:pointer;font-family:'JetBrains Mono',monospace;text-transform:uppercase;transition:all .18s}
+.lang-btn:last-child{border-right:none}
+.lang-btn:hover{background:rgba(255,255,255,.04);color:var(--text)}
+.lang-btn.active{background:rgba(0,255,136,.08);color:var(--green2)}
+
+/* ══════════ TOOLTIPS ══════════ */
+[data-tooltip]{position:relative;cursor:help}
+[data-tooltip]::after{content:attr(data-tooltip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1a1a2e;border:1px solid var(--border-hi);color:var(--text-hi);font-size:.66rem;letter-spacing:.05em;padding:.4rem .75rem;border-radius:2px;pointer-events:none;opacity:0;transition:opacity .2s;z-index:9999;font-family:'JetBrains Mono',monospace;font-style:normal;font-weight:400;max-width:280px;white-space:normal;text-align:center;line-height:1.5}
+[data-tooltip]:hover::after{opacity:1}
+
+/* ══════════ NAV ══════════ */
+.nav{position:sticky;top:0;z-index:100;background:rgba(7,7,11,.97);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);overflow-x:auto}
+.nav-inner{max-width:980px;margin:0 auto;display:flex;min-width:max-content}
+.nav-tab{padding:.88rem 1.4rem;font-size:.7rem;font-family:'JetBrains Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);cursor:pointer;border:none;background:transparent;border-bottom:2px solid transparent;transition:all .18s;display:flex;align-items:center;gap:.5rem;white-space:nowrap}
+.nav-tab:hover{color:var(--text);background:rgba(255,255,255,.025)}
+.nav-tab.active{color:var(--green);border-bottom-color:var(--green);background:rgba(0,255,136,.04)}
+.tab-num{font-family:'VT323',monospace;font-size:1.1rem;opacity:.55;line-height:1}
+.tab-badge{font-size:.54rem;padding:.08rem .35rem;background:rgba(0,255,136,.12);color:var(--green2);border:1px solid rgba(0,255,136,.2);border-radius:2px;letter-spacing:.05em}
+
+/* ══════════ SECTIONS ══════════ */
+.section{display:none;max-width:980px;margin:0 auto;padding:2.2rem 1.5rem 5rem;position:relative;z-index:10}
+.section.active{display:block;animation:fadeIn .25s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.section-title{font-family:'VT323',monospace;font-size:1.9rem;color:var(--green);letter-spacing:.07em;margin-bottom:.3rem}
+.section-desc{font-size:.8rem;color:var(--muted);margin-bottom:2rem;line-height:1.85}
+
+/* ══════════ SVG ARCH ══════════ */
+.arch-container{background:var(--surface);border:1px solid var(--border-hi);border-radius:3px;padding:1.6rem 1.4rem 1.2rem;margin-bottom:1.8rem;overflow-x:auto}
+.arch-label{font-size:.64rem;letter-spacing:.16em;color:var(--muted);text-transform:uppercase;margin-bottom:1.2rem}
+.arch-svg-wrap{min-width:700px}
+
+/* ══════════ FORMS ══════════ */
+.form-card{background:var(--surface);border:1px solid var(--border-hi);border-radius:3px;padding:1.7rem;margin-bottom:1.2rem}
+.form-group{margin-bottom:1.4rem}
+.form-group:last-child{margin-bottom:0}
+.form-label{display:block;font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:var(--green2);margin-bottom:.48rem}
+.form-hint{font-size:.74rem;color:var(--muted);margin-bottom:.55rem;line-height:1.7;font-style:italic}
+.form-input{width:100%;background:rgba(7,7,11,.8);border:1px solid var(--border-hi);border-radius:2px;color:var(--text-hi);font-family:'JetBrains Mono',monospace;font-size:.86rem;padding:.75rem .92rem;outline:none;transition:border-color .2s,box-shadow .2s}
+.form-input:focus{border-color:var(--green2);box-shadow:0 0 0 1px rgba(0,204,110,.3),inset 0 0 16px rgba(0,255,136,.03)}
+.form-input::placeholder{color:var(--muted2)}
+.form-input.error{border-color:var(--red)!important;animation:shake .3s ease}
+.form-input.warn{border-color:var(--amber)!important}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.path-warning{display:none;margin-top:.38rem;font-size:.71rem;color:var(--amber);line-height:1.55;padding:.32rem .65rem;background:rgba(255,170,0,.06);border:1px solid rgba(255,170,0,.2);border-radius:2px}
+.path-warning.visible{display:block;animation:fadeIn .2s ease}
+
+/* ══════════ TOGGLE ══════════ */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.95rem 1rem;background:rgba(7,7,11,.8);border:1px solid var(--border-hi);border-radius:2px}
+.toggle-label-text{font-size:.8rem;color:var(--text);margin-bottom:.15rem}
+.toggle-label-sub{font-size:.7rem;color:var(--muted);line-height:1.55}
+.toggle{position:relative;width:46px;height:24px;flex-shrink:0}
+.toggle input{display:none}
+.toggle-track{position:absolute;inset:0;background:var(--border-hi);border-radius:12px;cursor:pointer;transition:background .22s;border:1px solid transparent}
+.toggle-track::after{content:'';position:absolute;left:4px;top:4px;width:14px;height:14px;border-radius:50%;background:var(--muted);transition:transform .22s,background .22s,box-shadow .22s}
+.toggle input:checked+.toggle-track{background:rgba(0,204,110,.2);border-color:var(--green2)}
+.toggle input:checked+.toggle-track::after{transform:translateX(22px);background:var(--green);box-shadow:0 0 8px rgba(0,255,136,.5)}
+
+/* ══════════ BUTTONS ══════════ */
+.btn-generate{width:100%;padding:1.1rem;background:transparent;border:1px solid var(--green);color:var(--green);font-family:'VT323',monospace;font-size:1.65rem;letter-spacing:.22em;cursor:pointer;border-radius:2px;transition:all .2s;position:relative;overflow:hidden}
+.btn-generate::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(0,255,136,.08),transparent);transform:translateX(-100%);transition:transform .5s}
+.btn-generate:hover{background:rgba(0,255,136,.06);box-shadow:0 0 24px rgba(0,255,136,.18),inset 0 0 24px rgba(0,255,136,.04);text-shadow:0 0 12px var(--green)}
+.btn-generate:hover::before{transform:translateX(100%)}
+.btn-generate:active{transform:translateY(1px)}
+.btn-row{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1.2rem}
+.btn-secondary{font-size:.68rem;letter-spacing:.1em;padding:.52rem 1rem;background:transparent;border:1px solid var(--border-hi);color:var(--text);cursor:pointer;border-radius:2px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;transition:all .18s}
+.btn-secondary:hover{border-color:var(--green2);color:var(--green2)}
+.btn-secondary.amber{border-color:rgba(255,170,0,.3);color:var(--amber2)}
+.btn-secondary.amber:hover{border-color:var(--amber);color:var(--amber)}
+.btn-secondary.blue{border-color:rgba(85,153,255,.35);color:var(--blue)}
+.btn-secondary.blue:hover{border-color:var(--blue)}
+.btn-zip{display:flex;align-items:center;gap:.5rem;font-size:.68rem;letter-spacing:.1em;padding:.58rem 1.1rem;background:rgba(0,255,136,.05);border:1px solid rgba(0,255,136,.35);color:var(--green2);cursor:pointer;border-radius:2px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;transition:all .2s;font-weight:500}
+.btn-zip:hover{background:rgba(0,255,136,.1);border-color:var(--green);color:var(--green);box-shadow:0 0 16px rgba(0,255,136,.12)}
+.btn-zip:active{transform:translateY(1px)}
+
+/* ══════════ CODE BLOCKS ══════════ */
+.code-wrap{margin-bottom:1.4rem}
+.code-header{display:flex;align-items:flex-start;justify-content:space-between;gap:.8rem;padding:.7rem .95rem;background:var(--surface2);border:1px solid var(--border-hi);border-bottom:none;border-radius:3px 3px 0 0}
+.code-title{font-size:.69rem;letter-spacing:.11em;color:var(--amber);text-transform:uppercase;line-height:1.4}
+.code-subtitle{font-size:.63rem;color:var(--muted);margin-top:.15rem}
+.btn-copy{flex-shrink:0;font-size:.62rem;letter-spacing:.1em;padding:.3rem .78rem;background:transparent;border:1px solid var(--border-hi);color:var(--muted);cursor:pointer;border-radius:2px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;transition:all .18s}
+.btn-copy:hover{border-color:var(--green2);color:var(--green2)}
+.btn-copy.copied{border-color:var(--green);color:var(--green)}
+.code-block{background:rgba(0,0,0,.5);border:1px solid var(--border-hi);border-radius:0 0 3px 3px;padding:1.05rem 1.15rem;font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--text);line-height:1.75;overflow-x:auto;white-space:pre;max-height:360px;overflow-y:auto}
+
+/* ══════════ RESULTS ══════════ */
+.results{opacity:0;max-height:0;overflow:hidden;transition:opacity .35s ease,max-height .55s ease}
+.results.visible{opacity:1;max-height:9999px}
+.results-header{display:flex;align-items:flex-start;gap:1rem;margin-bottom:1.2rem;padding:1rem 1.2rem;background:var(--surface);border:1px solid rgba(0,255,136,.2);border-radius:3px}
+.results-ok{font-family:'VT323',monospace;font-size:2.1rem;color:var(--green);flex-shrink:0;line-height:1}
+.results-header-text{font-size:.8rem;color:var(--text-hi);letter-spacing:.06em}
+.results-header-sub{font-size:.7rem;color:var(--muted);margin-top:.25rem}
+.results-actions{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1.4rem}
+
+/* ══════════ ALERTS ══════════ */
+.alert{display:flex;align-items:flex-start;gap:.8rem;padding:.9rem 1rem;border-radius:3px;margin-bottom:1rem;font-size:.76rem;line-height:1.75}
+.alert-icon{font-size:1rem;flex-shrink:0;line-height:1.35}
+.alert-warning{background:rgba(255,170,0,.07);border:1px solid rgba(255,170,0,.2);color:var(--text)}
+.alert-warning .alert-icon{color:var(--amber)}
+.alert-info{background:rgba(85,153,255,.06);border:1px solid rgba(85,153,255,.2);color:var(--text)}
+.alert-info .alert-icon{color:var(--blue)}
+.alert-success{background:rgba(0,255,136,.05);border:1px solid rgba(0,255,136,.2);color:var(--text)}
+.alert-success .alert-icon{color:var(--green)}
+
+/* ══════════ SOP ══════════ */
+.sop-header-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.8rem}
+.sop-progress-wrap{display:flex;align-items:center;gap:.8rem}
+.sop-progress-bar-bg{width:180px;height:4px;background:var(--border-hi);border-radius:2px;overflow:hidden}
+.sop-progress-bar{height:100%;background:linear-gradient(90deg,var(--green2),var(--green));border-radius:2px;transition:width .4s ease;width:0}
+.sop-progress-label{font-size:.7rem;color:var(--muted);letter-spacing:.1em}
+.sop-phase{margin-bottom:1rem;border:1px solid var(--border-hi);border-radius:3px;overflow:hidden}
+.sop-phase-header{display:flex;align-items:center;gap:.7rem;padding:.95rem 1rem;background:var(--surface2);cursor:pointer;user-select:none;transition:background .15s}
+.sop-phase-header:hover{background:rgba(255,255,255,.03)}
+.phase-icon{font-family:'VT323',monospace;font-size:1.35rem;width:1.4rem;text-align:center}
+.phase-icon.done{color:var(--green)}
+.phase-icon.progress{color:var(--amber)}
+.phase-num{font-size:.63rem;letter-spacing:.18em;color:var(--muted)}
+.phase-title{flex:1;font-size:.8rem;color:var(--text);letter-spacing:.05em}
+.phase-count{font-size:.65rem;color:var(--muted);letter-spacing:.08em}
+.phase-arrow{font-size:.6rem;color:var(--muted);transition:transform .2s}
+.sop-phase-header[aria-expanded="false"] .phase-arrow{transform:rotate(-90deg)}
+.sop-steps-container{background:var(--surface)}
+.sop-step{display:flex;align-items:flex-start;gap:1rem;padding:.95rem 1.1rem;cursor:pointer;transition:background .15s;outline:none}
+.sop-step:hover{background:rgba(255,255,255,.025)}
+.sop-step:focus-visible{outline:1px solid var(--green2);outline-offset:-2px}
+.sop-check{width:18px;height:18px;flex-shrink:0;border-radius:2px;border:1.5px solid var(--muted2);margin-top:2px;transition:all .18s;display:flex;align-items:center;justify-content:center}
+.sop-check.checked{background:var(--green2);border-color:var(--green2)}
+.sop-check.checked::after{content:'✓';font-size:.65rem;color:#000;font-weight:700}
+.sop-step-title{font-size:.8rem;color:var(--text);margin-bottom:.32rem;line-height:1.55}
+.sop-step.done .sop-step-title{color:var(--muted);text-decoration:line-through}
+.sop-step-detail{font-size:.73rem;color:var(--muted);line-height:1.75}
+.sop-step-detail code{background:rgba(0,0,0,.5);border:1px solid var(--border-hi);padding:.05rem .38rem;border-radius:2px;color:var(--green2);font-size:.9em}
+
+/* ══════════ ACCORDION ══════════ */
+.accordion{margin-bottom:.7rem;border:1px solid var(--border-hi);border-radius:3px;overflow:hidden}
+.accordion-trigger{display:flex;align-items:center;gap:.9rem;width:100%;padding:1rem 1.1rem;background:var(--surface);border:none;cursor:pointer;text-align:left;transition:background .15s}
+.accordion-trigger:hover{background:rgba(255,255,255,.03)}
+.accordion-trigger.open{background:var(--surface2)}
+.acc-title{font-size:.8rem;color:var(--text);letter-spacing:.03em}
+.acc-sub{font-size:.7rem;color:var(--muted);margin-top:.2rem}
+.acc-arrow{margin-left:auto;font-size:.6rem;color:var(--muted);transition:transform .2s;flex-shrink:0}
+.accordion-trigger.open .acc-arrow{transform:rotate(180deg)}
+.accordion-body{display:none;padding:1.2rem 1.1rem;background:var(--surface);border-top:1px solid var(--border)}
+.accordion-body.open{display:block;animation:fadeIn .2s ease}
+
+/* ══════════ BADGES ══════════ */
+.badge{display:inline-block;font-size:.63rem;padding:.15rem .55rem;border-radius:2px;letter-spacing:.1em;font-family:'JetBrains Mono',monospace;flex-shrink:0;font-weight:700}
+.badge-red{background:rgba(255,68,102,.15);color:var(--red);border:1px solid rgba(255,68,102,.35)}
+.badge-amber{background:rgba(255,170,0,.12);color:var(--amber);border:1px solid rgba(255,170,0,.3)}
+.badge-blue{background:rgba(85,153,255,.1);color:var(--blue);border:1px solid rgba(85,153,255,.3)}
+
+/* ══════════ STEP LIST ══════════ */
+.step{display:flex;gap:.8rem;margin-bottom:.7rem;font-size:.77rem;line-height:1.75}
+.step-n{color:var(--green2);font-weight:700;flex-shrink:0;min-width:1.4rem}
+.step-text{color:var(--text)}
+.step-text code{background:rgba(0,0,0,.5);border:1px solid var(--border-hi);padding:.05rem .38rem;border-radius:2px;color:var(--green2);font-size:.9em}
+.step-text strong{color:var(--text-hi)}
+
+/* ══════════ FLOW (Max Blueprint) ══════════ */
+.flow{display:flex;flex-direction:column;align-items:center;gap:0}
+.flow-node{width:100%;max-width:340px;padding:.85rem 1.1rem;border-radius:3px;background:var(--surface2);text-align:center}
+.fn-blue{border:1px solid rgba(85,153,255,.45)}
+.fn-amber{border:1px solid rgba(255,170,0,.45)}
+.fn-green{border:1px solid rgba(0,255,136,.4)}
+.flow-node-label{font-size:.62rem;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-bottom:.3rem}
+.flow-node-name{font-size:.9rem;color:var(--text-hi);font-weight:600;margin-bottom:.3rem}
+.flow-node-hint{font-size:.68rem;color:var(--muted)}
+.flow-arrow-v{font-size:1.2rem;color:var(--green2);line-height:1.6;opacity:.6}
+.flow-split{display:flex;gap:1rem;width:100%;max-width:380px;justify-content:center}
+.flow-split-item{flex:1;display:flex;flex-direction:column;align-items:center}
+
+/* ══════════ MODALS ══════════ */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;z-index:1000;padding:1.5rem;backdrop-filter:blur(4px)}
+.modal-overlay.hidden{display:none}
+.modal-box{background:var(--surface);border:1px solid var(--border-hi);border-radius:4px;width:100%;max-width:540px;max-height:88vh;display:flex;flex-direction:column;animation:fadeIn .2s ease}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:1.1rem 1.4rem;border-bottom:1px solid var(--border-hi);flex-shrink:0}
+.modal-title{font-family:'VT323',monospace;font-size:1.45rem;color:var(--green);letter-spacing:.07em}
+.modal-close{background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:1.3rem;line-height:1;padding:.1rem .3rem;transition:color .15s;font-family:'JetBrains Mono',monospace}
+.modal-close:hover{color:var(--text)}
+.modal-body{padding:1.3rem 1.4rem;overflow-y:auto;flex:1}
+
+/* ══════════ TOUR ══════════ */
+.tour-overlay{position:fixed;inset:0;background:rgba(0,0,0,.82);display:flex;align-items:center;justify-content:center;z-index:1100;padding:1.5rem;backdrop-filter:blur(6px)}
+.tour-overlay.hidden{display:none}
+.tour-box{background:var(--surface);border:1px solid rgba(0,255,136,.2);border-radius:4px;width:100%;max-width:480px;padding:2rem;animation:fadeIn .25s ease;box-shadow:0 0 60px rgba(0,255,136,.08)}
+.tour-step{display:none}
+.tour-step.active{display:block;animation:fadeIn .2s ease}
+.tour-step-num{font-size:.63rem;letter-spacing:.2em;color:var(--green2);text-transform:uppercase;margin-bottom:.8rem}
+.tour-step-title{font-family:'VT323',monospace;font-size:1.65rem;color:var(--text-hi);margin-bottom:.8rem;line-height:1.2}
+.tour-step-desc{font-size:.79rem;color:var(--muted);line-height:1.85;margin-bottom:1.4rem}
+.tour-dots{display:flex;gap:.4rem;margin-bottom:1.2rem}
+.tour-dot{width:6px;height:6px;border-radius:50%;background:var(--border-hi);transition:background .2s}
+.tour-dot.active{background:var(--green)}
+.tour-actions{display:flex;justify-content:space-between;align-items:center}
+.tour-skip-btn{font-size:.63rem;color:var(--muted2);cursor:pointer;background:none;border:none;font-family:'JetBrains Mono',monospace;letter-spacing:.08em;transition:color .15s}
+.tour-skip-btn:hover{color:var(--muted)}
+.tour-btn-group{display:flex;gap:.5rem}
+.tour-btn{font-size:.7rem;letter-spacing:.12em;padding:.52rem 1rem;background:transparent;border:1px solid var(--border-hi);color:var(--text);cursor:pointer;border-radius:2px;font-family:'JetBrains Mono',monospace;text-transform:uppercase;transition:all .18s}
+.tour-btn:hover{border-color:var(--muted)}
+.tour-btn.primary{border-color:var(--green);color:var(--green)}
+.tour-btn.primary:hover{background:rgba(0,255,136,.08);box-shadow:0 0 12px rgba(0,255,136,.15)}
+
+/* ══════════ CHANGELOG ══════════ */
+.changelog-version{font-family:'VT323',monospace;font-size:1.25rem;color:var(--amber);margin:1rem 0 .5rem}
+.changelog-version:first-child{margin-top:0}
+.changelog-item{display:flex;align-items:flex-start;gap:.6rem;font-size:.75rem;color:var(--text);margin-bottom:.4rem;line-height:1.65}
+.changelog-dot{color:var(--muted);flex-shrink:0}
+.changelog-tag{display:inline-block;font-size:.58rem;padding:.05rem .4rem;border-radius:2px;letter-spacing:.08em;font-weight:700;flex-shrink:0}
+.tag-new{background:rgba(0,204,110,.15);color:var(--green2);border:1px solid rgba(0,204,110,.3)}
+.tag-fix{background:rgba(255,68,102,.1);color:var(--red);border:1px solid rgba(255,68,102,.25)}
+.tag-ux{background:rgba(85,153,255,.1);color:var(--blue);border:1px solid rgba(85,153,255,.25)}
+.tag-i18n{background:rgba(255,170,0,.1);color:var(--amber);border:1px solid rgba(255,170,0,.25)}
+
+/* ══════════ FOOTER ══════════ */
+footer{border-top:1px solid var(--border);padding:1.5rem 2rem;text-align:center;position:relative;z-index:10}
+.footer-inner{max-width:980px;margin:0 auto}
+footer p{font-size:.68rem;color:var(--muted);letter-spacing:.06em;line-height:1.75}
+footer a{color:var(--muted);text-decoration:underline;transition:color .15s}
+footer a:hover{color:var(--text)}
+
+/* ══════════ RESPONSIVE ══════════ */
+@media(max-width:600px){
+  .header{padding:1.2rem 1rem 1rem}
+  .section{padding:1.5rem 1rem 4rem}
+  .form-card{padding:1.2rem}
+  .btn-row{gap:.4rem}
+  .sop-progress-bar-bg{width:120px}
+  .tour-box{padding:1.4rem}
+  .header-actions{gap:.3rem}
+  .arch-container{padding:1rem .8rem}
+}
+
+/* ══════════ SVG LANG ══════════ (via JS, but CSS fallback) */
+.svg-lang-en{display:none}
+body.lang-en .svg-lang-es{display:none}
+body.lang-en .svg-lang-en{display:inline}
+
+/* ══════════ COMPLETE BANNER ══════════ */
+#sop-complete-banner{display:none;margin-top:1rem}
+</style>
+</head>
+<body>
+
+<!-- ██████ TOUR OVERLAY ██████ -->
+<div class="tour-overlay" id="tour-overlay">
+  <div class="tour-box">
+    <!-- Step 1 -->
+    <div class="tour-step active" id="tour-s1">
+      <div class="tour-step-num"><span class="lang-es">PASO 1 DE 4</span><span class="lang-en">STEP 1 OF 4</span></div>
+      <div class="tour-step-title"><span class="lang-es">¡Bienvenido a AXIS CONFIGURATOR v5.2!</span><span class="lang-en">Welcome to AXIS CONFIGURATOR v5.2!</span></div>
+      <div class="tour-step-desc"><span class="lang-es">La herramienta definitiva para TidalCycles + SuperCollider + Max for Live. Zero backend, un solo archivo HTML, multi-plataforma y multilingüe.</span><span class="lang-en">The definitive tool for TidalCycles + SuperCollider + Max for Live. Zero backend, single HTML file, cross-platform and multilingual.</span></div>
+    </div>
+    <!-- Step 2 -->
+    <div class="tour-step" id="tour-s2">
+      <div class="tour-step-num"><span class="lang-es">PASO 2 DE 4</span><span class="lang-en">STEP 2 OF 4</span></div>
+      <div class="tour-step-title"><span class="lang-es">01 · Generador de Configuración</span><span class="lang-en">01 · Configuration Generator</span></div>
+      <div class="tour-step-desc"><span class="lang-es">Ingresá tus rutas y el sistema genera todos los archivos correctos para tu OS: BootTidal.hs sin BOM, startup.scd con memoria aumentada, scripts de instalación, y un ZIP completo.</span><span class="lang-en">Enter your paths and it generates all correct files for your OS: BOM-free BootTidal.hs, startup.scd with increased memory, installation scripts, and a complete ZIP.</span></div>
+    </div>
+    <!-- Step 3 -->
+    <div class="tour-step" id="tour-s3">
+      <div class="tour-step-num"><span class="lang-es">PASO 3 DE 4</span><span class="lang-en">STEP 3 OF 4</span></div>
+      <div class="tour-step-title"><span class="lang-es">02 · SOP Checklist Interactivo</span><span class="lang-en">02 · Interactive SOP Checklist</span></div>
+      <div class="tour-step-desc"><span class="lang-es">17 pasos en 5 fases para el primer setup. Marcá cada paso al completarlo. El progreso se guarda en tu navegador.</span><span class="lang-en">17 steps in 5 phases for first setup. Check each step as you complete it. Progress is saved in your browser.</span></div>
+    </div>
+    <!-- Step 4 -->
+    <div class="tour-step" id="tour-s4">
+      <div class="tour-step-num"><span class="lang-es">PASO 4 DE 4</span><span class="lang-en">STEP 4 OF 4</span></div>
+      <div class="tour-step-title"><span class="lang-es">03 · Diagnóstico · 04 · Max Blueprint</span><span class="lang-en">03 · Diagnostics · 04 · Max Blueprint</span></div>
+      <div class="tour-step-desc"><span class="lang-es">Los 5 errores que causan el 90% de los abandonos, con soluciones paso a paso. Y el blueprint completo del patch M4L para recibir señal OSC desde Tidal.</span><span class="lang-en">The 5 errors causing 90% of failures, with step-by-step solutions. And the complete M4L patch blueprint for receiving OSC from Tidal.</span></div>
+    </div>
+
+    <div class="tour-dots">
+      <div class="tour-dot active" id="td1"></div>
+      <div class="tour-dot" id="td2"></div>
+      <div class="tour-dot" id="td3"></div>
+      <div class="tour-dot" id="td4"></div>
+    </div>
+    <div class="tour-actions">
+      <button class="tour-skip-btn" onclick="closeTour()"><span class="lang-es">SALTAR TOUR</span><span class="lang-en">SKIP TOUR</span></button>
+      <div class="tour-btn-group">
+        <button class="tour-btn" onclick="tourPrev()" id="btn-tour-prev" style="display:none"><span class="lang-es">← ANTERIOR</span><span class="lang-en">← PREV</span></button>
+        <button class="tour-btn primary" onclick="tourNext()" id="btn-tour-next"><span class="lang-es">SIGUIENTE →</span><span class="lang-en">NEXT →</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ██████ CHANGELOG MODAL ██████ -->
+<div class="modal-overlay hidden" id="changelog-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">⎇ CHANGELOG</div>
+      <button class="modal-close" onclick="closeChangelog()" aria-label="Cerrar / Close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="changelog-version">v5.2 — Abril 2026</div>
+      <div class="changelog-item"><span class="changelog-dot">▸</span><span class="changelog-tag tag-fix">FIX</span><span><strong>Sistema i18n reescrito</strong> — Lógica blindada CSS pura con <code>body:not(.lang-en)</code>. Cero manipulación DOM al cambiar idioma. Pantalla en blanco eliminada.</span></div>
+      <div class="changelog-item"><span class="changelog-dot">▸</span><span class="changelog-tag tag-i18n">I18N</span><span>JS setLang() simplificado: solo alterna clase en body. CSS se encarga de todo lo demás.</span></div>
+      <div class="changelog-version">v5.1 — Abril 2026</div>
+      <div class="changelog-item"><span class="changelog-dot">▸</span><span class="changelog-tag tag-fix">FIX</span><span><strong>SVG completamente rediseñado</strong> — viewBox 820×300, nodos 4× más grandes, fuentes 12–16px (antes 7–9px), contraste óptimo, leyenda legible en todos los viewports.</span></div>
+      <div class="changelog-item"><span class="changelog-dot">▸</span><span class="changelog-tag tag-i18n">I18N</span><span><strong>Sistema multilingüe completo</strong> — Español (default) + Inglés. Todos los textos traducidos: UI, tooltips, SOP, diagnóstico, blueprint, SVG y wizard.</span></div>
+      <div class="changelog-item"><span class="changelog-dot">▸</span><span class="changelog-tag tag-ux">UX</span><span>Tamaños de fuente aumentados en toda la UI: labels 0.80rem, hints 0.74rem, código 0.80rem, steps 0.77rem.</span></div>
+      <div class="changelog-item"><span class="changelog-dot">▸</span><span class="changelog-tag tag-fix">FIX</span><span>ZIP renombrado a <code>axis-config-v5.zip</code>. Badge OS con icono correcto para macOS (⌘), Windows (⊞) y Linux (🐧).</span></div>
+      <div class="changelog-item"><span class="changelog-dot">▸</span><span class="changelog-tag tag-ux">UX</span><span>Dim mode con transición CSS suave (0.35s). Lang switcher con indicador activo y persistencia localStorage.</span></div>
+      <div class="changelog-item"><span class="changelog-dot">▸</span><span class="changelog-tag tag-ux">UX</span><span>ARIA labels correctos en todos los controles. Señales audio (sólida gris) vs OSC (punteada verde) diferenciadas claramente.</span></div>
+      <div class="changelog-version">v5.0 — Abril 2026</div>
+      <div class="changelog-item"><span class="changelog-dot">▸</span><span class="changelog-tag tag-new">NEW</span><span>Soporte multilingüe inicial (ES/EN). Diagrama SVG rediseñado.</span></div>
+      <div class="changelog-version">v4.0 — Abril 2026</div>
+      <div class="changelog-item"><span class="changelog-dot">▸</span><span class="changelog-tag tag-new">NEW</span><span>Detección automática de OS · ZIP download · Wizard de bienvenida · Copiar todos los resultados</span></div>
+      <div class="changelog-version">v3.0 — Marzo 2026</div>
+      <div class="changelog-item"><span class="changelog-dot">▸</span><span class="changelog-tag tag-new">NEW</span><span>Export/Import JSON · Sección Max Blueprint</span></div>
+      <div class="changelog-version">v2.0 — Enero 2026</div>
+      <div class="changelog-item"><span class="changelog-dot">▸</span><span class="changelog-tag tag-new">NEW</span><span>SOP Checklist interactivo (17 pasos, 5 fases) · Diagnóstico de 5 errores</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ██████ HEADER ██████ -->
+<header class="header">
+  <div class="header-inner">
+    <div>
+      <div class="title-vt">AXIS CONFIGURATOR</div>
+      <div class="title-sub">
+        <span class="lang-es">TidalCycles 1.10.1 · SuperCollider 3.14 · Max for Live 9 · v5.2 Abril 2026</span>
+        <span class="lang-en">TidalCycles 1.10.1 · SuperCollider 3.14 · Max for Live 9 · v5.2 April 2026</span>
+      </div>
+    </div>
+    <div class="header-meta">
+      <div class="header-badges">
+        <div class="status-badge"><span class="status-dot"></span><span class="lang-es">SISTEMA ONLINE</span><span class="lang-en">SYSTEM ONLINE</span></div>
+        <div class="os-badge" id="os-badge">⬡ ...</div>
+      </div>
+      <div class="header-actions">
+        <div class="lang-switcher">
+          <button class="lang-btn active" data-lang="es" onclick="setLang('es')" aria-label="Español">🇪🇸 ES</button>
+          <button class="lang-btn" data-lang="en" onclick="setLang('en')" aria-label="English">🇬🇧 EN</button>
+        </div>
+        <button class="btn-header accent" onclick="openTour()">⬡ TOUR</button>
+        <button class="btn-header" onclick="openChangelog()">⎇ CHANGELOG</button>
+        <button class="btn-header" id="btnDim" onclick="toggleDim()">◑ DIM</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ██████ NAV ██████ -->
+<nav class="nav" role="navigation">
+  <div class="nav-inner">
+    <button class="nav-tab active" onclick="showSection('generator',this)" aria-selected="true">
+      <span class="tab-num" aria-hidden="true">01</span>
+      <span class="lang-es">GENERADOR</span><span class="lang-en">GENERATOR</span>
+    </button>
+    <button class="nav-tab" onclick="showSection('sop',this)" aria-selected="false">
+      <span class="tab-num" aria-hidden="true">02</span>
+      SOP CHECKLIST
+      <span class="tab-badge" id="sop-nav-badge">0%</span>
+    </button>
+    <button class="nav-tab" onclick="showSection('troubleshooter',this)" aria-selected="false">
+      <span class="tab-num" aria-hidden="true">03</span>
+      <span class="lang-es">DIAGNÓSTICO</span><span class="lang-en">DIAGNOSTICS</span>
+    </button>
+    <button class="nav-tab" onclick="showSection('blueprint',this)" aria-selected="false">
+      <span class="tab-num" aria-hidden="true">04</span>
+      MAX BLUEPRINT
+    </button>
+  </div>
+</nav>
+
+<!-- ██████ SECTION 01 — GENERATOR ██████ -->
+<section class="section active" id="section-generator" role="main">
+  <div class="section-title">
+    <span class="lang-es">// GENERADOR DE CONFIGURACIÓN</span>
+    <span class="lang-en">// CONFIGURATION GENERATOR</span>
+  </div>
+  <p class="section-desc">
+    <span class="lang-es">Ingresá tus rutas y el sistema genera todos los archivos de configuración correctos para tu OS.<br>Elimina el 90% de los errores de setup: BOM, buffers, rutas y API incompatible.</span>
+    <span class="lang-en">Enter your paths and the system generates all correct configuration files for your OS.<br>Eliminates 90% of setup errors: BOM, buffers, paths, and incompatible API.</span>
+  </p>
+
+  <!-- SVG DIAGRAM -->
+  <div class="arch-container">
+    <div class="arch-label">
+      <span class="lang-es">Arquitectura del sistema — Flujo de señal completo</span>
+      <span class="lang-en">System architecture — Complete signal flow</span>
+    </div>
+    <div class="arch-svg-wrap">
+      <svg viewBox="0 0 820 300" xmlns="http://www.w3.org/2000/svg" style="width:100%;font-family:'JetBrains Mono',monospace;" aria-label="Signal flow diagram">
+        <defs>
+          <marker id="arr-audio" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 Z" fill="#5a5a7a"/>
+          </marker>
+          <marker id="arr-osc" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M0,0 L9,4.5 L0,9 Z" fill="rgba(0,204,110,0.75)"/>
+          </marker>
+        </defs>
+
+        <!-- ── TOP ROW: AUDIO CHAIN ── -->
+
+        <!-- Node: TidalCycles -->
+        <rect x="12" y="20" width="172" height="92" rx="3" fill="#0d0d14" stroke="rgba(85,153,255,0.55)" stroke-width="1.5"/>
+        <text x="98" y="46" text-anchor="middle" font-size="9.5" letter-spacing="1.8" fill="rgba(85,153,255,0.6)">TIDAL / GHCi</text>
+        <text x="98" y="74" text-anchor="middle" font-size="16" font-weight="600" fill="#5599ff">TidalCycles</text>
+        <text x="98" y="98" text-anchor="middle" font-size="10.5" fill="#505070">BootTidal.hs</text>
+
+        <!-- Arrow: TidalCycles → SuperDirt (OSC dashed green) -->
+        <line x1="184" y1="66" x2="224" y2="66" stroke="rgba(0,204,110,0.65)" stroke-width="1.5" stroke-dasharray="5,3.5" marker-end="url(#arr-osc)"/>
+        <text x="204" y="57" text-anchor="middle" font-size="9.5" fill="rgba(0,204,110,0.6)">:57120</text>
+
+        <!-- Node: SuperDirt -->
+        <rect x="226" y="20" width="162" height="92" rx="3" fill="#0d0d14" stroke="rgba(255,170,0,0.55)" stroke-width="1.5"/>
+        <text x="307" y="46" text-anchor="middle" font-size="9.5" letter-spacing="1.5" fill="rgba(255,170,0,0.75)">SUPERCOLLIDER</text>
+        <text x="307" y="74" text-anchor="middle" font-size="16" font-weight="600" fill="#ffaa00">SuperDirt</text>
+        <text x="307" y="98" text-anchor="middle" font-size="10.5" fill="#505070">port :57120</text>
+
+        <!-- Arrow: SuperDirt → AudioDriver (audio solid gray) -->
+        <line x1="388" y1="66" x2="428" y2="66" stroke="#5a5a7a" stroke-width="1.5" marker-end="url(#arr-audio)"/>
+
+        <!-- Node: Audio Driver -->
+        <rect x="430" y="20" width="158" height="92" rx="3" fill="#0d0d14" stroke="rgba(255,170,0,0.35)" stroke-width="1.5"/>
+        <text x="509" y="46" text-anchor="middle" font-size="9.5" letter-spacing="1.5" fill="rgba(255,170,0,0.6)" id="svg-driver-label">AUDIO DRIVER</text>
+        <text x="509" y="74" text-anchor="middle" font-size="15.5" font-weight="600" fill="#cc8800" id="svg-driver-name">ASIO4ALL</text>
+        <text x="509" y="98" text-anchor="middle" font-size="9.5" fill="#505070">ASIO · CoreAudio · JACK</text>
+
+        <!-- Arrow: AudioDriver → AudioOut (audio solid gray) -->
+        <line x1="588" y1="66" x2="628" y2="66" stroke="#5a5a7a" stroke-width="1.5" marker-end="url(#arr-audio)"/>
+
+        <!-- Node: Audio Output -->
+        <rect x="630" y="20" width="172" height="92" rx="3" fill="#0d0d14" stroke="rgba(0,255,136,0.38)" stroke-width="1.5"/>
+        <text x="716" y="46" text-anchor="middle" font-size="9.5" letter-spacing="1.8" fill="rgba(0,255,136,0.6)">
+          <tspan class="svg-lang-es">SALIDA DE AUDIO</tspan>
+          <tspan class="svg-lang-en" display="none">AUDIO OUTPUT</tspan>
+        </text>
+        <text x="716" y="74" text-anchor="middle" font-size="16" font-weight="600" fill="#00cc6e">🔊 AUDIO</text>
+        <text x="716" y="98" text-anchor="middle" font-size="10.5" fill="#505070" id="svg-audio-hint">
+          <tspan class="svg-lang-es">Salida estéreo</tspan>
+          <tspan class="svg-lang-en" display="none">Stereo output</tspan>
+        </text>
+
+        <!-- ── VERTICAL CONNECTOR (OSC to Max, dashed green) ── -->
+        <!-- Down from TidalCycles bottom -->
+        <line x1="98" y1="112" x2="98" y2="210" stroke="rgba(0,204,110,0.55)" stroke-width="1.5" stroke-dasharray="5,3.5"/>
+        <!-- Right to Max for Live -->
+        <line x1="98" y1="210" x2="224" y2="210" stroke="rgba(0,204,110,0.55)" stroke-width="1.5" stroke-dasharray="5,3.5" marker-end="url(#arr-osc)"/>
+        <!-- Label OSC :8000 -->
+        <rect x="106" y="198" width="88" height="18" rx="2" fill="#0d0d14" opacity="0.95"/>
+        <text x="150" y="211" text-anchor="middle" font-size="10" fill="rgba(0,204,110,0.75)">OSC :8000</text>
+
+        <!-- ── BOTTOM ROW: OSC CHAIN ── -->
+
+        <!-- Node: Max for Live -->
+        <rect x="226" y="165" width="162" height="92" rx="3" fill="#0d0d14" stroke="rgba(0,255,136,0.5)" stroke-width="1.5"/>
+        <text x="307" y="191" text-anchor="middle" font-size="9.5" letter-spacing="1.5" fill="rgba(0,255,136,0.7)">MAX FOR LIVE</text>
+        <text x="307" y="216" text-anchor="middle" font-size="13.5" font-weight="600" fill="#00ff88">udpreceive</text>
+        <text x="307" y="236" text-anchor="middle" font-size="13" font-weight="400" fill="#00cc6e">8000</text>
+        <text x="307" y="251" text-anchor="middle" font-size="10" fill="#505070">macroA · macroB</text>
+
+        <!-- Arrow: Max → Ableton (dashed green) -->
+        <line x1="388" y1="210" x2="428" y2="210" stroke="rgba(0,204,110,0.55)" stroke-width="1.5" stroke-dasharray="5,3.5" marker-end="url(#arr-osc)"/>
+        <text x="408" y="202" text-anchor="middle" font-size="9.5" fill="rgba(0,204,110,0.55)">Live API</text>
+
+        <!-- Node: Ableton Live -->
+        <rect x="430" y="165" width="158" height="92" rx="3" fill="#0d0d14" stroke="rgba(0,255,136,0.3)" stroke-width="1.5"/>
+        <text x="509" y="191" text-anchor="middle" font-size="9.5" letter-spacing="1.5" fill="rgba(0,255,136,0.55)">ABLETON LIVE</text>
+        <text x="509" y="218" text-anchor="middle" font-size="14" font-weight="600" fill="#00cc6e">live.remote~</text>
+        <text x="509" y="247" text-anchor="middle" font-size="10" fill="#505070">Live API params</text>
+
+        <!-- ── LEGEND ── -->
+        <!-- Audio signal -->
+        <line x1="28" y1="279" x2="78" y2="279" stroke="#5a5a7a" stroke-width="2"/>
+        <polygon points="78,275 88,279 78,283" fill="#5a5a7a"/>
+        <text x="98" y="283" font-size="11" fill="#606080">
+          <tspan class="svg-lang-es">señal de audio</tspan>
+          <tspan class="svg-lang-en" display="none">audio signal</tspan>
+        </text>
+
+        <!-- OSC signal -->
+        <line x1="248" y1="279" x2="298" y2="279" stroke="rgba(0,204,110,0.75)" stroke-width="2" stroke-dasharray="6,4"/>
+        <polygon points="298,275 308,279 298,283" fill="rgba(0,204,110,0.75)"/>
+        <text x="318" y="283" font-size="11" fill="rgba(0,204,110,0.75)">
+          <tspan class="svg-lang-es">señal OSC (datos)</tspan>
+          <tspan class="svg-lang-en" display="none">OSC signal (data)</tspan>
+        </text>
+
+        <!-- Optional badge -->
+        <text x="630" y="175" font-size="9" fill="#3a3a5a" font-style="italic">
+          <tspan class="svg-lang-es">(opcional)</tspan>
+          <tspan class="svg-lang-en" display="none">(optional)</tspan>
+        </text>
+      </svg>
+    </div>
+  </div><!-- /arch-container -->
+
+  <!-- FORM -->
+  <div class="form-card">
+    <!-- Project Path -->
+    <div class="form-group">
+      <label class="form-label" for="projectPath"
+        data-tooltip="Donde vivirán BootTidal.hs y sesion.tidal / Where BootTidal.hs and sesion.tidal will live">
+        ⬡ <span class="lang-es">Ruta de la carpeta del proyecto</span><span class="lang-en">Project folder path</span>
+      </label>
+      <div class="form-hint">
+        <span class="lang-es">Donde vivirán BootTidal.hs y sesion.tidal · Ej: C:\Users\Karen\Desktop\AxisOpus</span>
+        <span class="lang-en">Where BootTidal.hs and sesion.tidal will live · E.g.: C:\Users\Karen\Desktop\AxisOpus</span>
+      </div>
+      <input type="text" id="projectPath" class="form-input"
+        placeholder="C:\Users\Karen\Desktop\MiProyecto"
+        oninput="validatePath(this,'warn-proj')"
+        aria-describedby="warn-proj"/>
+      <div class="path-warning" id="warn-proj"></div>
+    </div>
+    <!-- Dirt Samples Path -->
+    <div class="form-group">
+      <label class="form-label" for="dirtPath"
+        data-tooltip="Si dejás vacío se usa la ruta por defecto de SuperDirt Quarks / Leave empty to use the default SuperDirt Quarks path">
+        ⬡ <span class="lang-es">Ruta de Dirt-Samples (opcional)</span><span class="lang-en">Dirt-Samples path (optional)</span>
+      </label>
+      <div class="form-hint">
+        <span class="lang-es">Si dejás vacío se usa la ruta por defecto de SuperDirt Quarks</span>
+        <span class="lang-en">Leave empty to use the default SuperDirt Quarks path</span>
+      </div>
+      <input type="text" id="dirtPath" class="form-input"
+        placeholder="C:\Users\Karen\AppData\Local\SuperCollider\downloaded-quarks\Dirt-Samples"
+        oninput="validatePath(this,'warn-dirt')"
+        aria-describedby="warn-dirt"/>
+      <div class="path-warning" id="warn-dirt"></div>
+    </div>
+    <!-- Max Toggle -->
+    <div class="form-group">
+      <div class="form-label">
+        <span class="lang-es">Integración Max for Live (OSC hacia Ableton)</span>
+        <span class="lang-en">Max for Live integration (OSC to Ableton)</span>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label-text">
+            <span class="lang-es">Agregar target OSC para Max 9</span>
+            <span class="lang-en">Add OSC target for Max 9</span>
+          </div>
+          <div class="toggle-label-sub">
+            <span class="lang-es">Necesario para controlar parámetros de Ableton desde Tidal</span>
+            <span class="lang-en">Required to control Ableton parameters from Tidal</span>
+          </div>
+        </div>
+        <label class="toggle" aria-label="Toggle Max for Live integration">
+          <input type="checkbox" id="maxToggle" onchange="toggleMaxPort()">
+          <span class="toggle-track"></span>
+        </label>
+      </div>
+    </div>
+    <!-- Max Port -->
+    <div class="form-group" id="maxPortGroup" style="display:none">
+      <label class="form-label" for="maxPort"
+        data-tooltip="Default: 8000 · Debe coincidir con udpreceive en el patch Max / Must match udpreceive in the Max patch">
+        ⬡ <span class="lang-es">Puerto OSC para Max 9</span><span class="lang-en">OSC Port for Max 9</span>
+      </label>
+      <div class="form-hint">
+        <span class="lang-es">Default: 8000 · Debe coincidir exactamente con el número en el objeto udpreceive de tu patch Max</span>
+        <span class="lang-en">Default: 8000 · Must match exactly the number in the udpreceive object of your Max patch</span>
+      </div>
+      <input type="number" id="maxPort" class="form-input" value="8000" min="1024" max="65535"/>
+    </div>
+  </div>
+
+  <!-- Export / Import -->
+  <div class="btn-row">
+    <button class="btn-secondary" onclick="exportConfig()">
+      ↑ <span class="lang-es">EXPORTAR JSON</span><span class="lang-en">EXPORT JSON</span>
+    </button>
+    <button class="btn-secondary amber" onclick="document.getElementById('importFile').click()">
+      ↓ <span class="lang-es">IMPORTAR JSON</span><span class="lang-en">IMPORT JSON</span>
+    </button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importConfig(this)">
+  </div>
+
+  <!-- GENERATE BUTTON -->
+  <button class="btn-generate" onclick="generateConfigs()">
+    ⬡ &nbsp; <span class="lang-es">GENERAR CONFIGURACIÓN</span><span class="lang-en">GENERATE CONFIGURATION</span> &nbsp; ⬡
+  </button>
+
+  <!-- RESULTS -->
+  <div class="results" id="results">
+    <br>
+    <div class="results-header">
+      <div class="results-ok">✓</div>
+      <div>
+        <div class="results-header-text">
+          <span class="lang-es">CONFIGURACIÓN GENERADA — copiar y ejecutar en el orden indicado</span>
+          <span class="lang-en">CONFIGURATION GENERATED — copy and run in the indicated order</span>
+        </div>
+        <div class="results-header-sub">
+          <span class="lang-es">Todos los archivos fueron adaptados a tu ruta y sistema operativo</span>
+          <span class="lang-en">All files have been adapted to your path and operating system</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="alert alert-warning">
+      <span class="alert-icon">⚠</span>
+      <span>
+        <span class="lang-es"><strong>Nunca editar BootTidal.hs directamente en VSCode</strong> — el BOM se reintroduce automáticamente. Siempre regenerar con este generador.</span>
+        <span class="lang-en"><strong>Never edit BootTidal.hs directly in VSCode</strong> — BOM gets reintroduced automatically. Always regenerate with this tool.</span>
+      </span>
+    </div>
+
+    <div class="results-actions">
+      <button class="btn-secondary" onclick="copyAll()">
+        ⬡ <span class="lang-es">COPIAR TODOS</span><span class="lang-en">COPY ALL</span>
+      </button>
+      <button class="btn-zip" onclick="generateZip()">
+        <span>⬡</span>
+        <span class="lang-es">DESCARGAR TODO COMO ZIP</span><span class="lang-en">DOWNLOAD ALL AS ZIP</span>
+      </button>
+    </div>
+
+    <!-- Code blocks -->
+    <!-- STEP 1 -->
+    <div class="code-wrap">
+      <div class="code-header">
+        <div>
+          <div class="code-title" id="step1-title"><span class="lang-es">PASO 1 · Script de instalación — BootTidal.hs sin BOM</span><span class="lang-en">STEP 1 · Installation script — BOM-free BootTidal.hs</span></div>
+          <div class="code-subtitle" id="step1-sub"><span class="lang-es">Ejecutar en PowerShell / Terminal según tu OS</span><span class="lang-en">Run in PowerShell / Terminal depending on your OS</span></div>
+        </div>
+        <button class="btn-copy" onclick="copyCode('ps-out',this)"><span class="lang-es">COPIAR</span><span class="lang-en">COPY</span></button>
+      </div>
+      <pre class="code-block" id="ps-out"></pre>
+    </div>
+    <!-- STEP 2 -->
+    <div class="code-wrap">
+      <div class="code-header">
+        <div>
+          <div class="code-title"><span class="lang-es">PASO 2 · SuperCollider — Iniciar servidor + SuperDirt (startup.scd)</span><span class="lang-en">STEP 2 · SuperCollider — Start server + SuperDirt (startup.scd)</span></div>
+          <div class="code-subtitle"><span class="lang-es">Seleccionar TODO (Ctrl+A) → ejecutar (Ctrl+Enter) · Esperar "SuperDirt: Online"</span><span class="lang-en">Select ALL (Ctrl+A) → run (Ctrl+Enter) · Wait for "SuperDirt: Online"</span></div>
+        </div>
+        <button class="btn-copy" onclick="copyCode('sc-out',this)"><span class="lang-es">COPIAR</span><span class="lang-en">COPY</span></button>
+      </div>
+      <pre class="code-block" id="sc-out"></pre>
+    </div>
+    <!-- STEP 3 -->
+    <div class="code-wrap">
+      <div class="code-header">
+        <div>
+          <div class="code-title"><span class="lang-es">PASO 3 · Verificar integridad del archivo (sin BOM)</span><span class="lang-en">STEP 3 · Verify file integrity (BOM-free)</span></div>
+          <div class="code-subtitle"><span class="lang-es">Primeros 3 bytes deben ser 58 115 101 — si ves 239 187 191 hay BOM</span><span class="lang-en">First 3 bytes must be 58 115 101 — if you see 239 187 191 there is a BOM</span></div>
+        </div>
+        <button class="btn-copy" onclick="copyCode('verify-out',this)"><span class="lang-es">COPIAR</span><span class="lang-en">COPY</span></button>
+      </div>
+      <pre class="code-block" id="verify-out"></pre>
+    </div>
+    <!-- STEP 4 -->
+    <div class="code-wrap">
+      <div class="code-header">
+        <div>
+          <div class="code-title"><span class="lang-es">PASO 4 · VSCode settings.json — Configurar asociación de archivos .tidal</span><span class="lang-en">STEP 4 · VSCode settings.json — Configure .tidal file association</span></div>
+          <div class="code-subtitle"><span class="lang-es">Ctrl+Shift+P → "Open User Settings (JSON)" · Pegar dentro del objeto raíz {}</span><span class="lang-en">Ctrl+Shift+P → "Open User Settings (JSON)" · Paste inside the root {} object</span></div>
+        </div>
+        <button class="btn-copy" onclick="copyCode('vscode-out',this)"><span class="lang-es">COPIAR</span><span class="lang-en">COPY</span></button>
+      </div>
+      <pre class="code-block" id="vscode-out"></pre>
+    </div>
+    <!-- STEP 5 -->
+    <div class="code-wrap">
+      <div class="code-header">
+        <div>
+          <div class="code-title"><span class="lang-es">PASO 5 · Sesión de inicio (sesion.tidal)</span><span class="lang-en">STEP 5 · Starter session (sesion.tidal)</span></div>
+          <div class="code-subtitle"><span class="lang-es">Guardar en la carpeta del proyecto · Evaluar líneas con Shift+Enter</span><span class="lang-en">Save in project folder · Evaluate lines with Shift+Enter</span></div>
+        </div>
+        <button class="btn-copy" onclick="copyCode('session-out',this)"><span class="lang-es">COPIAR</span><span class="lang-en">COPY</span></button>
+      </div>
+      <pre class="code-block" id="session-out"></pre>
+    </div>
+    <!-- STEP 6: Power mgmt -->
+    <div class="code-wrap">
+      <div class="code-header">
+        <div>
+          <div class="code-title"><span class="lang-es">OPCIONAL · Prevenir suspensión en sesiones largas</span><span class="lang-en">OPTIONAL · Prevent sleep during long sessions</span></div>
+          <div class="code-subtitle"><span class="lang-es">Evita que el OS suspenda el proceso de SC mid-performance</span><span class="lang-en">Prevents the OS from suspending the SC process mid-performance</span></div>
+        </div>
+        <button class="btn-copy" onclick="copyCode('power-out',this)"><span class="lang-es">COPIAR</span><span class="lang-en">COPY</span></button>
+      </div>
+      <pre class="code-block" id="power-out"></pre>
+    </div>
+  </div><!-- /results -->
+</section>
+
+<!-- ██████ SECTION 02 — SOP ██████ -->
+<section class="section" id="section-sop">
+  <div class="section-title">// SOP CHECKLIST</div>
+  <p class="section-desc">
+    <span class="lang-es">Protocolo de inicio en 17 pasos y 5 fases. Marcá cada paso al completarlo. El progreso se guarda en tu navegador automáticamente.</span>
+    <span class="lang-en">17-step, 5-phase startup protocol. Check each step as you complete it. Progress is saved in your browser automatically.</span>
+  </p>
+
+  <div class="sop-header-row">
+    <div class="sop-progress-wrap">
+      <div class="sop-progress-bar-bg" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="sop-progress-bar-container">
+        <div class="sop-progress-bar" id="sop-progress-bar"></div>
+      </div>
+      <span class="sop-progress-label" id="sop-progress-label">0 / 17</span>
+    </div>
+    <button class="btn-secondary" onclick="resetSOP()">↺ <span class="lang-es">REINICIAR</span><span class="lang-en">RESET</span></button>
+  </div>
+
+  <!-- Phase 1: Prerrequisitos -->
+  <div class="sop-phase" id="phase-1">
+    <div class="sop-phase-header" aria-expanded="true" onclick="togglePhase('phase-1')">
+      <span class="phase-icon" id="pi-1">○</span>
+      <span class="phase-num">FASE 01</span>
+      <span class="phase-title"><span class="lang-es">PRERREQUISITOS DE AUDIO</span><span class="lang-en">AUDIO PREREQUISITES</span></span>
+      <span class="phase-count" id="pc-1">0/3</span>
+      <span class="phase-arrow">▼</span>
+    </div>
+    <div class="sop-steps-container" id="ps-phase-1">
+      <!-- s1-1 -->
+      <div class="sop-step" id="step-s1-1" onclick="toggleStep('s1-1')" tabindex="0" role="checkbox" aria-checked="false" onkeydown="if(event.key==='Enter'||event.key===' ')toggleStep('s1-1')">
+        <div class="sop-check" id="sc-s1-1"></div>
+        <div>
+          <div class="sop-step-title"><span class="lang-es">Verificar que ASIO4ALL (Windows) / JACK (Linux) esté instalado y activo</span><span class="lang-en">Verify ASIO4ALL (Windows) / JACK (Linux) is installed and active</span></div>
+          <div class="sop-step-detail"><span class="lang-es"><strong>Windows:</strong> ASIO4ALL v2 debe estar en la bandeja del sistema → verificar verde. <strong>macOS:</strong> CoreAudio nativo, no requiere instalación. <strong>Linux:</strong> JACK o PipeWire corriendo — ejecutar <code>jack_lsp</code>.</span><span class="lang-en"><strong>Windows:</strong> ASIO4ALL v2 must be in the system tray → verify green. <strong>macOS:</strong> Native CoreAudio, no installation needed. <strong>Linux:</strong> JACK or PipeWire running — run <code>jack_lsp</code>.</span></div>
+        </div>
+      </div>
+      <div style="height:1px;background:var(--border)"></div>
+      <!-- s1-2 -->
+      <div class="sop-step" id="step-s1-2" onclick="toggleStep('s1-2')" tabindex="0" role="checkbox" aria-checked="false" onkeydown="if(event.key==='Enter'||event.key===' ')toggleStep('s1-2')">
+        <div class="sop-check" id="sc-s1-2"></div>
+        <div>
+          <div class="sop-step-title"><span class="lang-es">Cerrar cualquier aplicación que esté usando el driver de audio</span><span class="lang-en">Close any application using the audio driver</span></div>
+          <div class="sop-step-detail"><span class="lang-es">DAWs (Ableton, Reaper), Discord con ASIO, navegadores con audio activo. El driver ASIO en Windows es exclusivo — solo un cliente puede usarlo a la vez.</span><span class="lang-en">DAWs (Ableton, Reaper), Discord with ASIO, browsers with active audio. The ASIO driver on Windows is exclusive — only one client can use it at a time.</span></div>
+        </div>
+      </div>
+      <div style="height:1px;background:var(--border)"></div>
+      <!-- s1-3 -->
+      <div class="sop-step" id="step-s1-3" onclick="toggleStep('s1-3')" tabindex="0" role="checkbox" aria-checked="false" onkeydown="if(event.key==='Enter'||event.key===' ')toggleStep('s1-3')">
+        <div class="sop-check" id="sc-s1-3"></div>
+        <div>
+          <div class="sop-step-title"><span class="lang-es">Ejecutar el Generador y verificar que BootTidal.hs está libre de BOM</span><span class="lang-en">Run the Generator and verify BootTidal.hs is BOM-free</span></div>
+          <div class="sop-step-detail"><span class="lang-es">Ir a Tab 01, ingresar la ruta del proyecto y hacer clic en "GENERAR CONFIGURACIÓN". Ejecutar script del Paso 1. Los primeros 3 bytes deben ser <code>58 115 101</code>.</span><span class="lang-en">Go to Tab 01, enter the project path and click "GENERATE CONFIGURATION". Run Step 1 script. First 3 bytes must be <code>58 115 101</code>.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phase 2: SuperCollider Setup -->
+  <div class="sop-phase" id="phase-2">
+    <div class="sop-phase-header" aria-expanded="true" onclick="togglePhase('phase-2')">
+      <span class="phase-icon" id="pi-2">○</span>
+      <span class="phase-num">FASE 02</span>
+      <span class="phase-title"><span class="lang-es">SUPERCOLLIDER — SETUP</span><span class="lang-en">SUPERCOLLIDER — SETUP</span></span>
+      <span class="phase-count" id="pc-2">0/4</span>
+      <span class="phase-arrow">▼</span>
+    </div>
+    <div class="sop-steps-container" id="ps-phase-2">
+      <!-- s2-1 -->
+      <div class="sop-step" id="step-s2-1" onclick="toggleStep('s2-1')" tabindex="0" role="checkbox" aria-checked="false" onkeydown="if(event.key==='Enter'||event.key===' ')toggleStep('s2-1')">
+        <div class="sop-check" id="sc-s2-1"></div>
+        <div>
+          <div class="sop-step-title"><span class="lang-es">Verificar SuperCollider 3.14+ instalado</span><span class="lang-en">Verify SuperCollider 3.14+ is installed</span></div>
+          <div class="sop-step-detail"><span class="lang-es">Abrir SuperCollider IDE. En la consola post: <code>thisProcess.version</code> → Ctrl+Enter. Debe mostrar <code>3.14.x</code>.</span><span class="lang-en">Open SuperCollider IDE. In the post console: <code>thisProcess.version</code> → Ctrl+Enter. Should show <code>3.14.x</code>.</span></div>
+        </div>
+      </div>
+      <div style="height:1px;background:var(--border)"></div>
+      <!-- s2-2 -->
+      <div class="sop-step" id="step-s2-2" onclick="toggleStep('s2-2')" tabindex="0" role="checkbox" aria-checked="false" onkeydown="if(event.key==='Enter'||event.key===' ')toggleStep('s2-2')">
+        <div class="sop-check" id="sc-s2-2"></div>
+        <div>
+          <div class="sop-step-title"><span class="lang-es">Instalar SuperDirt y Dirt-Samples via Quarks</span><span class="lang-en">Install SuperDirt and Dirt-Samples via Quarks</span></div>
+          <div class="sop-step-detail"><span class="lang-es">Si es primera instalación: <code>Quarks.install("SuperDirt")</code> → Ctrl+Enter. Esperar descarga de samples (varios minutos). Reiniciar SC.</span><span class="lang-en">For first install: <code>Quarks.install("SuperDirt")</code> → Ctrl+Enter. Wait for sample download (several minutes). Restart SC.</span></div>
+        </div>
+      </div>
+      <div style="height:1px;background:var(--border)"></div>
+      <!-- s2-3 -->
+      <div class="sop-step" id="step-s2-3" onclick="toggleStep('s2-3')" tabindex="0" role="checkbox" aria-checked="false" onkeydown="if(event.key==='Enter'||event.key===' ')toggleStep('s2-3')">
+        <div class="sop-check" id="sc-s2-3"></div>
+        <div>
+          <div class="sop-step-title"><span class="lang-es">Verificar GHCup y TidalCycles 1.10.1 instalados</span><span class="lang-en">Verify GHCup and TidalCycles 1.10.1 are installed</span></div>
+          <div class="sop-step-detail"><span class="lang-es">Terminal/PowerShell: <code>ghci --version</code> (debe ser ≥ 9.4). Luego <code>cabal list tidal</code> para verificar 1.10.x.</span><span class="lang-en">Terminal/PowerShell: <code>ghci --version</code> (must be ≥ 9.4). Then <code>cabal list tidal</code> to verify 1.10.x.</span></div>
+        </div>
+      </div>
+      <div style="height:1px;background:var(--border)"></div>
+      <!-- s2-4 -->
+      <div class="sop-step" id="step-s2-4" onclick="toggleStep('s2-4')" tabindex="0" role="checkbox" aria-checked="false" onkeydown="if(event.key==='Enter'||event.key===' ')toggleStep('s2-4')">
+        <div class="sop-check" id="sc-s2-4"></div>
+        <div>
+          <div class="sop-step-title"><span class="lang-es">Instalar extensión TidalCycles en VSCode</span><span class="lang-en">Install TidalCycles extension in VSCode</span></div>
+          <div class="sop-step-detail"><span class="lang-es">Extensions (Ctrl+Shift+X) → buscar "TidalCycles" → instalar. Verificar que esté habilitada.</span><span class="lang-en">Extensions (Ctrl+Shift+X) → search "TidalCycles" → install. Verify it's enabled.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phase 3: SC Boot -->
+  <div class="sop-phase" id="phase-3">
+    <div class="sop-phase-header" aria-expanded="true" onclick="togglePhase('phase-3')">
+      <span class="phase-icon" id="pi-3">○</span>
+      <span class="phase-num">FASE 03</span>
+      <span class="phase-title"><span class="lang-es">SUPERCOLLIDER — BOOT</span><span class="lang-en">SUPERCOLLIDER — BOOT</span></span>
+      <span class="phase-count" id="pc-3">0/5</span>
+      <span class="phase-arrow">▼</span>
+    </div>
+    <div class="sop-steps-container" id="ps-phase-3">
+      <!-- s3-1 -->
+      <div class="sop-step" id="step-s3-1" onclick="toggleStep('s3-1')" tabindex="0" role="checkbox" aria-checked="false" onkeydown="if(event.key==='Enter'||event.key===' ')toggleStep('s3-1')">
+        <div class="sop-check" id="sc-s3-1"></div>
+        <div>
+          <div class="sop-step-title"><span class="lang-es">Abrir el archivo startup.scd generado en SuperCollider</span><span class="lang-en">Open the generated startup.scd file in SuperCollider</span></div>
+          <div class="sop-step-detail"><span class="lang-es">File → Open → navegar a la carpeta del proyecto → startup.scd. Verificar que está en la pestaña activa.</span><span class="lang-en">File → Open → navigate to the project folder → startup.scd. Verify the file is in the active tab.</span></div>
+        </div>
+      </div>
+      <div style="height:1px;background:var(--border)"></div>
+      <!-- s3-2 -->
+      <div class="sop-step" id="step-s3-2" onclick="toggleStep('s3-2')" tabindex="0" role="checkbox" aria-checked="false" onkeydown="if(event.key==='Enter'||event.key===' ')toggleStep('s3-2')">
+        <div class="sop-check" id="sc-s3-2"></div>
+        <div>
+          <div class="sop-step-title"><span class="lang-es">Seleccionar bloque completo (Ctrl+A) y ejecutar (Ctrl+Enter)</span><span class="lang-en">Select the entire block (Ctrl+A) and run (Ctrl+Enter)</span></div>
+          <div class="sop-step-detail"><span class="lang-es">El bloque entre paréntesis <code>( ... )</code> debe ejecutarse completo. Línea por línea = las opciones de memoria no se aplican. <strong>macOS:</strong> Cmd+A → Cmd+Enter.</span><span class="lang-en">The block within parentheses <code>( ... )</code> must execute as a whole. Line by line = memory options don't apply. <strong>macOS:</strong> Cmd+A → Cmd+Enter.</span></div>
+        </div>
+      </div>
+      <div style="height:1px;background:var(--border)"></div>
+      <!-- s3-3 -->
+      <div class="sop-step" id="step-s3-3" onclick="toggleStep('s3-3')" tabindex="0" role="checkbox" aria-checked="false" onkeydown="if(event.key==='Enter'||event.key===' ')toggleStep('s3-3')">
+        <div class="sop-check" id="sc-s3-3"></div>
+        <div>
+          <div class="sop-step-title"><span class="lang-es">Esperar que el medidor de CPU aparezca en VERDE</span><span class="lang-en">Wait for the CPU meter to turn GREEN</span></div>
+          <div class="sop-step-detail"><span class="lang-es">En la barra inferior del IDE: <code>s</code> con indicador CPU/RAM. Verde = listo. Azul = iniciando. Rojo = fallo → ver ERR-04.</span><span class="lang-en">In the IDE bottom bar: <code>s</code> with CPU/RAM indicator. Green = ready. Blue = starting. Red = failure → see ERR-04.</span></div>
+        </div>
+      </div>
+      <div style="height:1px;background:var(--border)"></div>
+      <!-- s3-4 -->
+      <div class="sop-step" id="step-s3-4" onclick="toggleStep('s3-4')" tabindex="0" role="checkbox" aria-checked="false" onkeydown="if(event.key==='Enter'||event.key===' ')toggleStep('s3-4')">
+        <div class="sop-check" id="sc-s3-4"></div>
+        <div>
+          <div class="sop-step-title"><span class="lang-es">Confirmar "SuperDirt: Online" en la consola de SC</span><span class="lang-en">Confirm "SuperDirt: Online" in the SC console</span></div>
+          <div class="sop-step-detail"><span class="lang-es">Puede tardar 15–60 segundos según cuántos bancos de samples se cargan. <strong>No continuar hasta verlo.</strong></span><span class="lang-en">May take 15–60 seconds depending on how many sample banks are loaded. <strong>Do not continue until you see it.</strong></span></div>
+        </div>
+      </div>
+      <div style="height:1px;background:var(--border)"></div>
+      <!-- s3-5 -->
+      <div class="sop-step" id="step-s3-5" onclick="toggleStep('s3-5')" tabindex="0" role="checkbox" aria-checked="false" onkeydown="if(event.key==='Enter'||event.key===' ')toggleStep('s3-5')">
+        <div class="sop-check" id="sc-s3-5"></div>
+        <div>
+          <div class="sop-step-title"><span class="lang-es">Test de audio rápido antes de iniciar Tidal</span><span class="lang-en">Quick audio test before starting Tidal</span></div>
+          <div class="sop-step-detail"><span class="lang-es">Ejecutar en SC: <code>{ [SinOsc.ar(440,0,0.2), SinOsc.ar(442,0,0.2)] }.play;</code> — debes escuchar un tono sinusoidal. Silencio = problema de driver, no Tidal → ERR-03.</span><span class="lang-en">Run in SC: <code>{ [SinOsc.ar(440,0,0.2), SinOsc.ar(442,0,0.2)] }.play;</code> — you should hear a sine tone. Silence = driver problem, not Tidal → ERR-03.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phase 4: TidalCycles -->
+  <div class="sop-phase" id="phase-4">
+    <div class="sop-phase-header" aria-expanded="true" onclick="togglePhase('phase-4')">
+      <span class="phase-icon" id="pi-4">○</span>
+      <span class="phase-num">FASE 04</span>
+      <span class="phase-title">TIDALCYCLES — CONNECT</span>
+      <span class="phase-count" id="pc-4">0/3</span>
+      <span class="phase-arrow">▼</span>
+    </div>
+    <div class="sop-steps-container" id="ps-phase-4">
+      <!-- s4-1 -->
+      <div class="sop-step" id="step-s4-1" onclick="toggleStep('s4-1')" tabindex="0" role="checkbox" aria-checked="false" onkeydown="if(event.key==='Enter'||event.key===' ')toggleStep('s4-1')">
+        <div class="sop-check" id="sc-s4-1"></div>
+        <div>
+          <div class="sop-step-title"><span class="lang-es">Abrir VSCode en la carpeta del proyecto y hacer clic en sesion.tidal</span><span class="lang-en">Open VSCode in the project folder and click on sesion.tidal</span></div>
+          <div class="sop-step-detail"><span class="lang-es">El archivo activo DEBE ser el <code>.tidal</code>, NO el <code>BootTidal.hs</code>. Si el activo es <code>.hs</code>, los comandos d1 no se ejecutarán.</span><span class="lang-en">The active file MUST be the <code>.tidal</code>, NOT <code>BootTidal.hs</code>. If the active file is <code>.hs</code>, d1 commands won't execute.</span></div>
+        </div>
+      </div>
+      <div style="height:1px;background:var(--border)"></div>
+      <!-- s4-2 -->
+      <div class="sop-step" id="step-s4-2" onclick="toggleStep('s4-2')" tabindex="0" role="checkbox" aria-checked="false" onkeydown="if(event.key==='Enter'||event.key===' ')toggleStep('s4-2')">
+        <div class="sop-check" id="sc-s4-2"></div>
+        <div>
+          <div class="sop-step-title"><span class="lang-es">Ctrl+Shift+P → "TidalCycles: Start Tidal" y abrir panel Output</span><span class="lang-en">Ctrl+Shift+P → "TidalCycles: Start Tidal" and open Output panel</span></div>
+          <div class="sop-step-detail"><span class="lang-es">Abrir panel Output: Ctrl+Shift+U → seleccionar "TidalCycles". Verás el log de GHCi cargando el BootTidal.hs (10–30 segundos).</span><span class="lang-en">Open Output panel: Ctrl+Shift+U → select "TidalCycles". You'll see the GHCi log loading BootTidal.hs (10–30 seconds).</span></div>
+        </div>
+      </div>
+      <div style="height:1px;background:var(--border)"></div>
+      <!-- s4-3 -->
+      <div class="sop-step" id="step-s4-3" onclick="toggleStep('s4-3')" tabindex="0" role="checkbox" aria-checked="false" onkeydown="if(event.key==='Enter'||event.key===' ')toggleStep('s4-3')">
+        <div class="sop-check" id="sc-s4-3"></div>
+        <div>
+          <div class="sop-step-title"><span class="lang-es">Confirmar "Connected to SuperDirt." en el panel Output</span><span class="lang-en">Confirm "Connected to SuperDirt." in the Output panel</span></div>
+          <div class="sop-step-detail"><span class="lang-es">Este mensaje confirma que el handshake Tidal ↔ SC fue exitoso. Cualquier error antes indica un problema con el BootTidal.hs → ERR-01 o ERR-02.</span><span class="lang-en">This message confirms the Tidal ↔ SC handshake was successful. Any error before this indicates a problem with BootTidal.hs → ERR-01 or ERR-02.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Phase 5: Integration -->
+  <div class="sop-phase" id="phase-5">
+    <div class="sop-phase-header" aria-expanded="true" onclick="togglePhase('phase-5')">
+      <span class="phase-icon" id="pi-5">○</span>
+      <span class="phase-num">FASE 05</span>
+      <span class="phase-title"><span class="lang-es">TEST DE INTEGRACIÓN</span><span class="lang-en">INTEGRATION TEST</span></span>
+      <span class="phase-count" id="pc-5">0/2</span>
+      <span class="phase-arrow">▼</span>
+    </div>
+    <div class="sop-steps-container" id="ps-phase-5">
+      <!-- s5-1 -->
+      <div class="sop-step" id="step-s5-1" onclick="toggleStep('s5-1')" tabindex="0" role="checkbox" aria-checked="false" onkeydown="if(event.key==='Enter'||event.key===' ')toggleStep('s5-1')">
+        <div class="sop-check" id="sc-s5-1"></div>
+        <div>
+          <div class="sop-step-title"><span class="lang-es">Evaluar d1 $ s "bd sd" con Shift+Enter — debe sonar</span><span class="lang-en">Evaluate d1 $ s "bd sd" with Shift+Enter — should produce sound</span></div>
+          <div class="sop-step-detail"><span class="lang-es">Confirma la cadena completa Tidal → SuperDirt → driver de audio. Sin sonido: ver ERR-03. Error de parsing: ver ERR-01 o ERR-02.</span><span class="lang-en">Confirms the complete chain Tidal → SuperDirt → audio driver. No sound: see ERR-03. Parsing error: see ERR-01 or ERR-02.</span></div>
+        </div>
+      </div>
+      <div style="height:1px;background:var(--border)"></div>
+      <!-- s5-2 -->
+      <div class="sop-step" id="step-s5-2" onclick="toggleStep('s5-2')" tabindex="0" role="checkbox" aria-checked="false" onkeydown="if(event.key==='Enter'||event.key===' ')toggleStep('s5-2')">
+        <div class="sop-check" id="sc-s5-2"></div>
+        <div>
+          <div class="sop-step-title"><span class="lang-es">Verificar flonum en Max y perilla en Ableton responden al patrón</span><span class="lang-en">Verify Max flonum and Ableton knob respond to the pattern</span></div>
+          <div class="sop-step-detail"><span class="lang-es">Evaluar: <code>let macroA = pF "macroA"</code> luego <code>d1 $ s "bd" # macroA (slow 4 $ sine)</code>. El flonum en Max debe oscilar 0→1. Si no: ver ERR-05.</span><span class="lang-en">Evaluate: <code>let macroA = pF "macroA"</code> then <code>d1 $ s "bd" # macroA (slow 4 $ sine)</code>. The Max flonum should oscillate 0→1. If not: see ERR-05.</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Complete banner -->
+  <div id="sop-complete-banner">
+    <div class="alert alert-success">
+      <span class="alert-icon">✓</span>
+      <span>
+        <span class="lang-es"><strong>¡SISTEMA COMPLETAMENTE OPERATIVO!</strong> Todos los pasos verificados. TidalCycles → SuperDirt → Audio · TidalCycles → Max for Live → Ableton Live. Todo conectado.</span>
+        <span class="lang-en"><strong>SYSTEM FULLY OPERATIONAL!</strong> All steps verified. TidalCycles → SuperDirt → Audio · TidalCycles → Max for Live → Ableton Live. Everything connected.</span>
+      </span>
+    </div>
+  </div>
+</section>
+
+<!-- ██████ SECTION 03 — TROUBLESHOOTER ██████ -->
+<section class="section" id="section-troubleshooter">
+  <div class="section-title">
+    <span class="lang-es">// DIAGNÓSTICO DE ERRORES</span>
+    <span class="lang-en">// ERROR DIAGNOSTICS</span>
+  </div>
+  <p class="section-desc">
+    <span class="lang-es">Los 5 problemas que causan el 90% de los abandonos. Identificar el síntoma exacto y seguir la solución step-by-step.</span>
+    <span class="lang-en">The 5 problems causing 90% of failures. Identify the exact symptom and follow the step-by-step solution.</span>
+  </p>
+
+  <!-- ERR-01 -->
+  <div class="accordion">
+    <button class="accordion-trigger" onclick="toggleAcc(this)" aria-expanded="false">
+      <span class="badge badge-red">ERR-01</span>
+      <div>
+        <div class="acc-title"><span class="lang-es">lexical error at character '\65279' — El fantasma del BOM</span><span class="lang-en">lexical error at character '\65279' — The BOM Ghost</span></div>
+        <div class="acc-sub"><span class="lang-es">GHCi arranca pero falla inmediatamente · El boot de Tidal aborta sin conectar</span><span class="lang-en">GHCi starts but fails immediately · Tidal boot aborts without connecting</span></div>
+      </div>
+      <span class="acc-arrow" aria-hidden="true">▼</span>
+    </button>
+    <div class="accordion-body">
+      <div class="alert alert-info" style="margin-bottom:1rem">
+        <span class="alert-icon">ℹ</span>
+        <span><span class="lang-es"><strong>¿Qué es el BOM?</strong> Windows guarda archivos en UTF-8 con 3 bytes invisibles al inicio (239 187 191). GHCi no puede leer esos bytes y aborta. Cualquier editor genérico —incluyendo VSCode sin configuración— puede introducirlo.</span><span class="lang-en"><strong>What is the BOM?</strong> Windows saves files in UTF-8 with 3 invisible bytes at the start (239 187 191). GHCi cannot read those bytes and aborts. Any generic editor — including unconfigured VSCode — can introduce it.</span></span>
+      </div>
+      <div class="step"><span class="step-n">1.</span><span class="step-text"><span class="lang-es">Ir a la <strong>Sección 01 GENERADOR</strong>, ingresar la ruta del proyecto y hacer clic en "GENERAR CONFIGURACIÓN".</span><span class="lang-en">Go to <strong>Section 01 GENERATOR</strong>, enter the project path and click "GENERATE CONFIGURATION".</span></span></div>
+      <div class="step"><span class="step-n">2.</span><span class="step-text"><span class="lang-es">Copiar el bloque <strong>PASO 1</strong> generado (script de instalación) y ejecutarlo.</span><span class="lang-en">Copy the generated <strong>STEP 1</strong> block (installation script) and run it.</span></span></div>
+      <div class="step"><span class="step-n">3.</span><span class="step-text"><span class="lang-es"><strong>Windows:</strong> PowerShell (Win + X → Windows PowerShell). <strong>NO como administrador.</strong> <strong>macOS/Linux:</strong> Terminal → <code>chmod +x install-boottidal.sh</code> y ejecutar.</span><span class="lang-en"><strong>Windows:</strong> PowerShell (Win + X → Windows PowerShell). <strong>NOT as administrator.</strong> <strong>macOS/Linux:</strong> Terminal → <code>chmod +x install-boottidal.sh</code> and run.</span></span></div>
+      <div class="step"><span class="step-n">4.</span><span class="step-text"><span class="lang-es">Verificar con el script de verificación (PASO 3): primeros 3 bytes deben ser <code>58 115 101</code>. Si aparece <code>239 187 191</code>, el BOM sigue presente — repetir el script.</span><span class="lang-en">Verify with the verification script (STEP 3): first 3 bytes must be <code>58 115 101</code>. If you see <code>239 187 191</code>, BOM is still present — repeat the script.</span></span></div>
+      <div class="step"><span class="step-n">5.</span><span class="step-text"><span class="lang-es"><strong>Regla de oro:</strong> NUNCA editar BootTidal.hs directamente en VSCode. Siempre regenerar con esta herramienta.</span><span class="lang-en"><strong>Golden rule:</strong> NEVER edit BootTidal.hs directly in VSCode. Always regenerate with this tool.</span></span></div>
+    </div>
+  </div>
+
+  <!-- ERR-02 -->
+  <div class="accordion">
+    <button class="accordion-trigger" onclick="toggleAcc(this)" aria-expanded="false">
+      <span class="badge badge-red">ERR-02</span>
+      <div>
+        <div class="acc-title"><span class="lang-es">Variable not in scope: d1 — API incompatible de Tidal</span><span class="lang-en">Variable not in scope: d1 — Incompatible Tidal API</span></div>
+        <div class="acc-sub"><span class="lang-es">Tidal no falla al arrancar pero d1, d2, hush no están definidos</span><span class="lang-en">Tidal starts without errors but d1, d2, hush are not defined</span></div>
+      </div>
+      <span class="acc-arrow" aria-hidden="true">▼</span>
+    </button>
+    <div class="accordion-body">
+      <div class="alert alert-info" style="margin-bottom:1rem">
+        <span class="alert-icon">ℹ</span>
+        <span><span class="lang-es"><strong>Causa raíz:</strong> TidalCycles 1.10.x reescribió la API de boot. Los BootTidal.hs viejos usan <code>import Sound.Tidal.Context</code> + <code>startTidal</code> que ya no existen. La nueva API usa <code>import Sound.Tidal.Boot</code> + <code>mkTidalWith</code>.</span><span class="lang-en"><strong>Root cause:</strong> TidalCycles 1.10.x rewrote the boot API. Old BootTidal.hs files use <code>import Sound.Tidal.Context</code> + <code>startTidal</code> which no longer exist. The new API uses <code>import Sound.Tidal.Boot</code> + <code>mkTidalWith</code>.</span></span>
+      </div>
+      <div class="step"><span class="step-n">1.</span><span class="step-text"><span class="lang-es">Ir al <strong>Generador (Sección 01)</strong> y ejecutar el script generado. El nuevo BootTidal.hs usa la API correcta.</span><span class="lang-en">Go to the <strong>Generator (Section 01)</strong> and run the generated script. The new BootTidal.hs uses the correct API.</span></span></div>
+      <div class="step"><span class="step-n">2.</span><span class="step-text"><span class="lang-es">Con <code>Sound.Tidal.Boot</code> + <code>mkTidalWith</code>, los comandos <code>d1–d9</code>, <code>hush</code>, <code>mute</code>, <code>solo</code>, <code>setcps</code> vienen incluidos. <strong>No definirlos manualmente.</strong></span><span class="lang-en">With <code>Sound.Tidal.Boot</code> + <code>mkTidalWith</code>, commands <code>d1–d9</code>, <code>hush</code>, <code>mute</code>, <code>solo</code>, <code>setcps</code> are included automatically. <strong>Do not define them manually.</strong></span></span></div>
+      <div class="step"><span class="step-n">3.</span><span class="step-text"><span class="lang-es">Si el error persiste: verificar que el archivo activo en VSCode sea <code>sesion.tidal</code> y NO <code>BootTidal.hs</code>.</span><span class="lang-en">If the error persists: verify that the active file in VSCode is <code>sesion.tidal</code> and NOT <code>BootTidal.hs</code>.</span></span></div>
+      <div class="step"><span class="step-n">4.</span><span class="step-text"><span class="lang-es">Si VSCode no reconoce los <code>.tidal</code>: verificar que settings.json tenga <code>"files.associations": {"*.tidal": "haskell"}</code>.</span><span class="lang-en">If VSCode doesn't recognize <code>.tidal</code> files: verify settings.json has <code>"files.associations": {"*.tidal": "haskell"}</code>.</span></span></div>
+    </div>
+  </div>
+
+  <!-- ERR-03 -->
+  <div class="accordion">
+    <button class="accordion-trigger" onclick="toggleAcc(this)" aria-expanded="false">
+      <span class="badge badge-amber">ERR-03</span>
+      <div>
+        <div class="acc-title"><span class="lang-es">Silencio total sin errores — Driver de audio bloqueado / zombie</span><span class="lang-en">Complete silence with no errors — Audio driver locked / zombie</span></div>
+        <div class="acc-sub"><span class="lang-es">Tidal conecta OK · SuperDirt dice "Online" · d1 evalúa sin error · pero no hay audio</span><span class="lang-en">Tidal connects OK · SuperDirt says "Online" · d1 evaluates without error · but no audio</span></div>
+      </div>
+      <span class="acc-arrow" aria-hidden="true">▼</span>
+    </button>
+    <div class="accordion-body">
+      <div class="alert alert-info" style="margin-bottom:1rem">
+        <span class="alert-icon">ℹ</span>
+        <span><span class="lang-es"><strong>Causa raíz:</strong> El driver de audio quedó en estado zombie (Windows: ASIO4ALL bloqueado por otra app o después de una suspensión). El servidor SC arrancó pero no tiene acceso real al hardware.</span><span class="lang-en"><strong>Root cause:</strong> The audio driver entered a zombie state (Windows: ASIO4ALL blocked by another app or after sleep). The SC server started but has no real access to the hardware.</span></span>
+      </div>
+      <div class="step"><span class="step-n">1.</span><span class="step-text"><span class="lang-es"><strong>Test diagnóstico:</strong> Ejecutar en SC: <code>{ SinOsc.ar(440, 0, 0.2) }.play;</code> — Si hay silencio, el problema es el driver, no Tidal.</span><span class="lang-en"><strong>Diagnostic test:</strong> Run in SC: <code>{ SinOsc.ar(440, 0, 0.2) }.play;</code> — If silent, the problem is the driver, not Tidal.</span></span></div>
+      <div class="step"><span class="step-n">2.</span><span class="step-text"><span class="lang-es"><strong>Windows/ASIO4ALL:</strong> Cerrar COMPLETAMENTE SuperCollider. Verificar que ninguna otra app use el driver. Abrir ASIO4ALL desde la bandeja — debe mostrar verde.</span><span class="lang-en"><strong>Windows/ASIO4ALL:</strong> COMPLETELY close SuperCollider. Verify no other app is using the driver. Open ASIO4ALL from the tray — must show green.</span></span></div>
+      <div class="step"><span class="step-n">3.</span><span class="step-text"><span class="lang-es"><strong>macOS:</strong> Verificar en Preferencias → Sonido que la salida de audio esté activa. Reiniciar CoreAudio: <code>sudo killall coreaudiod</code>.</span><span class="lang-en"><strong>macOS:</strong> Check System Preferences → Sound that audio output is active. Restart CoreAudio: <code>sudo killall coreaudiod</code>.</span></span></div>
+      <div class="step"><span class="step-n">4.</span><span class="step-text"><span class="lang-es"><strong>Linux:</strong> Verificar que JACK o PipeWire estén corriendo. <code>jack_lsp</code> o <code>pw-jack jack_lsp</code> para listar puertos.</span><span class="lang-en"><strong>Linux:</strong> Verify JACK or PipeWire is running. <code>jack_lsp</code> or <code>pw-jack jack_lsp</code> to list available ports.</span></span></div>
+      <div class="step"><span class="step-n">5.</span><span class="step-text"><span class="lang-es">Reiniciar SuperCollider completo (no solo Server.boot). Volver a ejecutar el .scd de boot.</span><span class="lang-en">Restart SuperCollider completely (not just Server.boot). Re-run the boot .scd file.</span></span></div>
+    </div>
+  </div>
+
+  <!-- ERR-04 -->
+  <div class="accordion">
+    <button class="accordion-trigger" onclick="toggleAcc(this)" aria-expanded="false">
+      <span class="badge badge-amber">ERR-04</span>
+      <div>
+        <div class="acc-title"><span class="lang-es">exceeded number of interconnect buffers — SC crashea al cargar samples</span><span class="lang-en">exceeded number of interconnect buffers — SC crashes loading samples</span></div>
+        <div class="acc-sub"><span class="lang-es">El servidor se cae al intentar cargar SuperDirt con muchos bancos de samples</span><span class="lang-en">Server crashes when trying to load SuperDirt with many sample banks</span></div>
+      </div>
+      <span class="acc-arrow" aria-hidden="true">▼</span>
+    </button>
+    <div class="accordion-body">
+      <div class="alert alert-info" style="margin-bottom:1rem">
+        <span class="alert-icon">ℹ</span>
+        <span><span class="lang-es"><strong>Causa raíz:</strong> Los valores default de SC (numWireBufs=64, numBuffers=1024) son insuficientes para SuperDirt con la colección completa. El generador ya los aumenta automáticamente.</span><span class="lang-en"><strong>Root cause:</strong> SC's default values (numWireBufs=64, numBuffers=1024) are insufficient for SuperDirt with the full collection. The generator already increases them automatically.</span></span>
+      </div>
+      <div class="step"><span class="step-n">1.</span><span class="step-text"><span class="lang-es">Usar el startup.scd generado. Ya incluye <code>numBuffers=4096</code>, <code>numWireBufs=512</code>, <code>memSize=8192*64</code>.</span><span class="lang-en">Use the generated startup.scd. It already includes <code>numBuffers=4096</code>, <code>numWireBufs=512</code>, <code>memSize=8192*64</code>.</span></span></div>
+      <div class="step"><span class="step-n">2.</span><span class="step-text"><span class="lang-es">Ejecutar el bloque completo entre paréntesis (Ctrl+A → Ctrl+Enter) — no línea por línea. Las opciones de memoria deben definirse ANTES de <code>s.waitForBoot</code>.</span><span class="lang-en">Run the entire block in parentheses (Ctrl+A → Ctrl+Enter) — not line by line. Memory options must be defined BEFORE <code>s.waitForBoot</code>.</span></span></div>
+      <div class="step"><span class="step-n">3.</span><span class="step-text"><span class="lang-es">Si el crash persiste: reducir temporalmente el número de bancos de Dirt-Samples cargados. Comentar algunas líneas de <code>~dirt.loadSoundFiles</code> en el .scd.</span><span class="lang-en">If the crash persists: temporarily reduce the number of Dirt-Samples banks loaded. Comment out some <code>~dirt.loadSoundFiles</code> lines in the .scd.</span></span></div>
+    </div>
+  </div>
+
+  <!-- ERR-05 -->
+  <div class="accordion">
+    <button class="accordion-trigger" onclick="toggleAcc(this)" aria-expanded="false">
+      <span class="badge badge-blue">ERR-05</span>
+      <div>
+        <div class="acc-title"><span class="lang-es">flonum de Max no se mueve — El puente OSC no cierra</span><span class="lang-en">Max flonum doesn't move — OSC bridge broken</span></div>
+        <div class="acc-sub"><span class="lang-es">El audio funciona desde Tidal pero los parámetros en Max for Live no reciben datos</span><span class="lang-en">Audio works from Tidal but Max for Live parameters receive no data</span></div>
+      </div>
+      <span class="acc-arrow" aria-hidden="true">▼</span>
+    </button>
+    <div class="accordion-body">
+      <div class="alert alert-info" style="margin-bottom:1rem">
+        <span class="alert-icon">ℹ</span>
+        <span><span class="lang-es"><strong>Causa raíz:</strong> El target OSC de Max en el BootTidal.hs no está configurado, el puerto no coincide, o el patch M4L no inicializó el udpreceive.</span><span class="lang-en"><strong>Root cause:</strong> The Max OSC target in BootTidal.hs is not configured, the port doesn't match, or the M4L patch didn't initialize udpreceive.</span></span>
+      </div>
+      <div class="step"><span class="step-n">1.</span><span class="step-text"><span class="lang-es">Verificar que en el Generador el toggle "Integración Max for Live" esté <strong>activado</strong> antes de generar. El BootTidal.hs debe incluir el <code>maxTarget</code>.</span><span class="lang-en">Verify that in the Generator the "Max for Live integration" toggle is <strong>enabled</strong> before generating. BootTidal.hs must include the <code>maxTarget</code>.</span></span></div>
+      <div class="step"><span class="step-n">2.</span><span class="step-text"><span class="lang-es">Verificar que el puerto (<strong>default 8000</strong>) coincida exactamente con el número en el objeto <code>udpreceive</code> del patch Max. Un dígito diferente = sin conexión.</span><span class="lang-en">Verify that the port (<strong>default 8000</strong>) matches exactly the number in the <code>udpreceive</code> object of the Max patch. One digit off = no connection.</span></span></div>
+      <div class="step"><span class="step-n">3.</span><span class="step-text"><span class="lang-es">Verificar en la consola Max (View → Max Console) que aparezca "udpreceive • binding to port 8000" al activar el dispositivo. Si no: unlock → re-lock del patch.</span><span class="lang-en">Verify in the Max console (View → Max Console) that "udpreceive • binding to port 8000" appears when activating the device. If not: unlock → re-lock the patch.</span></span></div>
+      <div class="step"><span class="step-n">4.</span><span class="step-text"><span class="lang-es">Verificar que los macros estén declarados: <code>let macroA = pF "macroA"</code>. El nombre entre comillas debe coincidir exactamente.</span><span class="lang-en">Verify that macros are declared: <code>let macroA = pF "macroA"</code>. The name in quotes must match exactly.</span></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ██████ SECTION 04 — MAX BLUEPRINT ██████ -->
+<section class="section" id="section-blueprint">
+  <div class="section-title">// MAX FOR LIVE — BLUEPRINT</div>
+  <p class="section-desc">
+    <span class="lang-es">Arquitectura del patch M4L receptor OSC. Construir en 5 pasos. El patch recibe datos de Tidal y los convierte en parámetros de Ableton Live.</span>
+    <span class="lang-en">OSC receiver M4L patch architecture. Build in 5 steps. The patch receives data from Tidal and converts it into Ableton Live parameters.</span>
+  </p>
+
+  <!-- Flow diagram -->
+  <div class="form-card" style="margin-bottom:1.4rem">
+    <div class="arch-label" style="margin-bottom:1rem">
+      <span class="lang-es">Flujo de señal interno del patch Max for Live</span>
+      <span class="lang-en">Internal signal flow of the Max for Live patch</span>
+    </div>
+    <div class="flow">
+      <div class="flow-node fn-blue">
+        <div class="flow-node-label"><span class="lang-es">PUERTO OSC ENTRANTE</span><span class="lang-en">INCOMING OSC PORT</span></div>
+        <div class="flow-node-name">udpreceive 8000</div>
+        <div class="flow-node-hint"><span class="lang-es">Recibe mensajes OSC de Tidal · agregar en patcher</span><span class="lang-en">Receives OSC messages from Tidal · add in patcher</span></div>
+      </div>
+      <div class="flow-arrow-v">↓</div>
+      <div class="flow-node fn-amber">
+        <div class="flow-node-label"><span class="lang-es">DECODIFICADOR OSC</span><span class="lang-en">OSC DECODER</span></div>
+        <div class="flow-node-name">OSC-route /dirt/play</div>
+        <div class="flow-node-hint"><span class="lang-es">Filtra mensajes del namespace correcto</span><span class="lang-en">Filters messages from the correct namespace</span></div>
+      </div>
+      <div class="flow-arrow-v">↓</div>
+      <div class="flow-split">
+        <div class="flow-split-item">
+          <div class="flow-node fn-green" style="width:100%">
+            <div class="flow-node-label">Macro A</div>
+            <div class="flow-node-name" style="font-size:.85rem">route macroA → flonum → live.remote~</div>
+          </div>
+        </div>
+        <div class="flow-split-item">
+          <div class="flow-node fn-green" style="width:100%">
+            <div class="flow-node-label">Macro B</div>
+            <div class="flow-node-name" style="font-size:.85rem">route macroB → flonum → live.remote~</div>
+          </div>
+        </div>
+      </div>
+      <div class="flow-arrow-v">↓</div>
+      <div class="flow-node fn-amber">
+        <div class="flow-node-label"><span class="lang-es">CONTROL DE PARÁMETRO ABLETON</span><span class="lang-en">ABLETON PARAMETER CONTROL</span></div>
+        <div class="flow-node-name">live.remote~</div>
+        <div class="flow-node-hint">live_set tracks N devices M parameters P</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5-step construction -->
+  <div class="form-card" style="margin-bottom:1.4rem">
+    <div class="section-title" style="font-size:1.2rem;margin-bottom:1rem">
+      <span class="lang-es">Construcción del patch — 5 pasos</span>
+      <span class="lang-en">Patch construction — 5 steps</span>
+    </div>
+    <div class="step"><span class="step-n">1.</span><span class="step-text"><span class="lang-es">En Ableton Live, crear una pista de audio o MIDI vacía. Abrir Max for Live (arrastrar un Max Audio Effect vacío).</span><span class="lang-en">In Ableton Live, create an empty audio or MIDI track. Open Max for Live (drag an empty Max Audio Effect).</span></span></div>
+    <div class="step"><span class="step-n">2.</span><span class="step-text"><span class="lang-es">En modo de edición, agregar el objeto <code>udpreceive 8000</code> — este es el punto de entrada OSC.</span><span class="lang-en">In edit mode, add the object <code>udpreceive 8000</code> — this is the OSC entry point.</span></span></div>
+    <div class="step"><span class="step-n">3.</span><span class="step-text"><span class="lang-es">Conectar la salida de <code>udpreceive</code> a un objeto <code>OSC-route /dirt/play</code> — filtra solo los mensajes de Tidal.</span><span class="lang-en">Connect the output of <code>udpreceive</code> to an <code>OSC-route /dirt/play</code> object — filters only Tidal messages.</span></span></div>
+    <div class="step"><span class="step-n">4.</span><span class="step-text"><span class="lang-es">Desde la salida de <code>OSC-route</code>, agregar objetos <code>route macroA</code> y <code>route macroB</code>. Conectar cada uno a un <code>flonum</code> para visualización.</span><span class="lang-en">From the <code>OSC-route</code> output, add <code>route macroA</code> and <code>route macroB</code> objects. Connect each to a <code>flonum</code> for visualization.</span></span></div>
+    <div class="step"><span class="step-n">5.</span><span class="step-text"><span class="lang-es">Conectar cada <code>flonum</code> a un objeto <code>live.remote~</code>. Especificar la ruta: <code>live_set tracks 0 devices 0 parameters 3</code> (ajustar números según tu sesión).</span><span class="lang-en">Connect each <code>flonum</code> to a <code>live.remote~</code> object. Specify the path: <code>live_set tracks 0 devices 0 parameters 3</code> (adjust numbers for your session).</span></span></div>
+  </div>
+
+  <!-- Integration test -->
+  <div class="code-wrap">
+    <div class="code-header">
+      <div>
+        <div class="code-title"><span class="lang-es">Test de integración completo — copiar a sesion.tidal</span><span class="lang-en">Complete integration test — copy to sesion.tidal</span></div>
+        <div class="code-subtitle"><span class="lang-es">sesion.tidal — Test completo: Tidal → SC → Max → Ableton</span><span class="lang-en">sesion.tidal — Full test: Tidal → SC → Max → Ableton</span></div>
+      </div>
+      <button class="btn-copy" onclick="copyCode('max-test',this)"><span class="lang-es">COPIAR</span><span class="lang-en">COPY</span></button>
+    </div>
+    <pre class="code-block" id="max-test">-- ═══ DECLARAR MACROS (evaluar con Shift+Enter por línea) ═══
+let macroA = pF "macroA"
+let macroB = pF "macroB"
+
+-- ═══ TEST 1 — Tidal → SuperDirt (debe sonar el bombo) ═══
+d1 $ s "bd sd"
+
+-- ═══ TEST 2 — Tidal → Max 9 (flonum de macroA debe oscilar 0→1 suavemente) ═══
+d1 $ s "bd" # macroA (slow 4 $ sine) # macroB rand
+
+-- ═══ TEST 3 — Patrón más complejo ═══
+d1 $ s "bd sd hh*4" # macroA (slow 8 $ sine) # macroB (slow 2 $ rand)
+
+-- ═══ CONTROL DE SESIÓN ═══
+hush              -- silenciar todo
+setcps (140/60/4) -- tempo a 140 BPM</pre>
+  </div>
+
+  <div class="alert alert-success">
+    <span class="alert-icon">✓</span>
+    <span>
+      <span class="lang-es"><strong>Checklist de integración exitosa:</strong> SC escucha en :57120 · Max escucha en :8000 · flonum de macroA oscila suavemente 0→1 · flonum de macroB parpadea aleatorio · La perilla de Ableton se mueve algorítmicamente.</span>
+      <span class="lang-en"><strong>Successful integration checklist:</strong> SC listening on :57120 · Max listening on :8000 · macroA flonum oscillates smoothly 0→1 · macroB flonum blinks randomly · Ableton knob moves algorithmically.</span>
+    </span>
+  </div>
+</section>
+
+<!-- ██████ FOOTER ██████ -->
+<footer>
+  <div class="footer-inner">
+    <p>
+      AXIS CONFIGURATOR · <span class="lang-es">Herramienta libre para la comunidad de Live Coding</span><span class="lang-en">Free tool for the Live Coding community</span><br>
+      TidalCycles 1.10.1 · SuperCollider 3.14 · Max for Live 9 · v5.2 <span class="lang-es">Abril</span><span class="lang-en">April</span> 2026<br>
+      <a href="https://tidalcycles.org" target="_blank" rel="noopener">tidalcycles.org</a> ·
+      <a href="https://supercollider.github.io" target="_blank" rel="noopener">supercollider.github.io</a> ·
+      <a href="https://github.com/musikinformatik/SuperDirt" target="_blank" rel="noopener">SuperDirt</a>
+    </p>
+    <p style="margin-top:.5rem;font-size:.62rem;color:var(--muted2)">
+      📄 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noopener">CC BY-NC-SA 4.0</a> —
+      <span class="lang-es">libre para usar y adaptar · prohibida la venta comercial · by <a href="https://github.com/ouroboros99" target="_blank" rel="noopener">Axis Opus</a></span>
+      <span class="lang-en">free to use and adapt · commercial sale prohibited · by <a href="https://github.com/ouroboros99" target="_blank" rel="noopener">Axis Opus</a></span>
+    </p>
+  </div>
+</footer>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════
+// OS DETECTION
+// ═══════════════════════════════════════════════════════════
+const OS = (function detectOS() {
+  const ua = navigator.userAgent, pl = navigator.platform || '';
+  if (/Win/i.test(pl) || /Windows/i.test(ua)) return 'windows';
+  if (/Mac/i.test(pl) || /macOS|Macintosh/i.test(ua)) return 'macos';
+  return 'linux';
+})();
+
+const OS_ICONS = { windows: '⊞', macos: '⌘', linux: '🐧' };
+const OS_LABELS = { windows: '⊞ WINDOWS', macos: '⌘ MACOS', linux: '🐧 LINUX' };
+
+// ═══════════════════════════════════════════════════════════
+// LANGUAGE SYSTEM
+// ═══════════════════════════════════════════════════════════
+let LANG = 'es';
+
+function setLang(lang) {
+  LANG = lang;
+  document.documentElement.lang = lang;
+  document.body.classList.toggle('lang-en', lang === 'en');
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+  try { localStorage.setItem('axisconf_lang', lang); } catch(e){}
+  applyLangSVG(lang);
+}
+
+function applyLangSVG(lang) {
+  document.querySelectorAll('.svg-lang-es').forEach(el => el.setAttribute('display', lang === 'es' ? '' : 'none'));
+  document.querySelectorAll('.svg-lang-en').forEach(el => el.setAttribute('display', lang === 'en' ? '' : 'none'));
+  const dn = document.getElementById('svg-driver-name');
+  if (dn) dn.textContent = OS === 'windows' ? 'ASIO4ALL' : OS === 'macos' ? 'CoreAudio' : 'JACK / PipeWire';
+}
+
+// ═══════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════
+function showSection(id, tabEl) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
+  const sec = document.getElementById('section-' + id);
+  if (sec) sec.classList.add('active');
+  if (tabEl) { tabEl.classList.add('active'); tabEl.setAttribute('aria-selected','true'); }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ═══════════════════════════════════════════════════════════
+// DIM MODE
+// ═══════════════════════════════════════════════════════════
+function toggleDim() {
+  document.body.classList.toggle('dim-mode');
+  const isDim = document.body.classList.contains('dim-mode');
+  document.getElementById('btnDim').classList.toggle('active', isDim);
+  try { localStorage.setItem('axisconf_dim', isDim ? '1' : '0'); } catch(e){}
+}
+
+// ═══════════════════════════════════════════════════════════
+// TOUR
+// ═══════════════════════════════════════════════════════════
+let currentTourStep = 1;
+const TOUR_TOTAL = 4;
+
+function openTour() {
+  document.getElementById('tour-overlay').classList.remove('hidden');
+  tourStep(1);
+}
+function closeTour() {
+  document.getElementById('tour-overlay').classList.add('hidden');
+  try { localStorage.setItem('axisconf_tour_done','1'); } catch(e){}
+}
+function tourStep(n) {
+  currentTourStep = n;
+  document.querySelectorAll('.tour-step').forEach((el,i) => el.classList.toggle('active', i+1 === n));
+  document.querySelectorAll('.tour-dot').forEach((el,i) => el.classList.toggle('active', i+1 === n));
+  const prev = document.getElementById('btn-tour-prev');
+  const next = document.getElementById('btn-tour-next');
+  if (prev) prev.style.display = n > 1 ? '' : 'none';
+  if (next) {
+    const isLast = n === TOUR_TOTAL;
+    next.innerHTML = isLast
+      ? '<span class="lang-es">COMENZAR →</span><span class="lang-en">START →</span>'
+      : '<span class="lang-es">SIGUIENTE →</span><span class="lang-en">NEXT →</span>';
+    next.onclick = isLast ? closeTour : tourNext;
+  }
+}
+function tourNext() { if (currentTourStep < TOUR_TOTAL) tourStep(currentTourStep+1); else closeTour(); }
+function tourPrev() { if (currentTourStep > 1) tourStep(currentTourStep-1); }
+
+// ═══════════════════════════════════════════════════════════
+// CHANGELOG MODAL
+// ═══════════════════════════════════════════════════════════
+function openChangelog() { document.getElementById('changelog-modal').classList.remove('hidden'); }
+function closeChangelog() { document.getElementById('changelog-modal').classList.add('hidden'); }
+
+document.getElementById('changelog-modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeChangelog(); });
+document.getElementById('tour-overlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeTour(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeChangelog(); closeTour(); } });
+
+// ═══════════════════════════════════════════════════════════
+// ACCORDION
+// ═══════════════════════════════════════════════════════════
+function toggleAcc(trigger) {
+  const body = trigger.nextElementSibling;
+  const wasOpen = trigger.classList.contains('open');
+  const section = trigger.closest('.section');
+  section.querySelectorAll('.accordion-trigger.open').forEach(t => {
+    t.classList.remove('open'); t.setAttribute('aria-expanded','false');
+    t.nextElementSibling.classList.remove('open');
+  });
+  if (!wasOpen) {
+    trigger.classList.add('open'); trigger.setAttribute('aria-expanded','true');
+    body.classList.add('open');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// SOP CHECKLIST
+// ═══════════════════════════════════════════════════════════
+const SOP_PHASE_MAP = {
+  's1-1':1,'s1-2':1,'s1-3':1,
+  's2-1':2,'s2-2':2,'s2-3':2,'s2-4':2,
+  's3-1':3,'s3-2':3,'s3-3':3,'s3-4':3,'s3-5':3,
+  's4-1':4,'s4-2':4,'s4-3':4,
+  's5-1':5,'s5-2':5
+};
+const PHASE_TOTALS = {1:3,2:4,3:5,4:3,5:2};
+const TOTAL_STEPS = 17;
+let sopState = {};
+
+function toggleStep(id) {
+  sopState[id] = !sopState[id];
+  const check = document.getElementById('sc-' + id);
+  const step = document.getElementById('step-' + id);
+  if (check) check.classList.toggle('checked', !!sopState[id]);
+  if (step) { step.classList.toggle('done', !!sopState[id]); step.setAttribute('aria-checked', sopState[id] ? 'true' : 'false'); }
+  updateSOPProgress();
+  saveSOPState();
+}
+
+function updateSOPProgress() {
+  const done = Object.values(sopState).filter(Boolean).length;
+  const pct = Math.round((done / TOTAL_STEPS) * 100);
+  const bar = document.getElementById('sop-progress-bar');
+  const lbl = document.getElementById('sop-progress-label');
+  const badge = document.getElementById('sop-nav-badge');
+  const cont = document.getElementById('sop-progress-bar-container');
+  if (bar) bar.style.width = pct + '%';
+  if (lbl) lbl.textContent = done + ' / ' + TOTAL_STEPS;
+  if (badge) badge.textContent = pct + '%';
+  if (cont) cont.setAttribute('aria-valuenow', pct);
+
+  for (let p = 1; p <= 5; p++) {
+    const total = PHASE_TOTALS[p];
+    const phaseDone = Object.entries(sopState).filter(([k,v]) => v && SOP_PHASE_MAP[k] === p).length;
+    const icon = document.getElementById('pi-' + p);
+    const count = document.getElementById('pc-' + p);
+    if (count) count.textContent = phaseDone + '/' + total;
+    if (icon) {
+      icon.classList.remove('done','progress');
+      if (phaseDone === total) { icon.textContent = '●'; icon.classList.add('done'); }
+      else if (phaseDone > 0) { icon.textContent = '◐'; icon.classList.add('progress'); }
+      else { icon.textContent = '○'; }
+    }
+  }
+  const banner = document.getElementById('sop-complete-banner');
+  if (banner) banner.style.display = done === TOTAL_STEPS ? 'block' : 'none';
+}
+
+function togglePhase(phaseId) {
+  const header = document.querySelector('#' + phaseId + ' .sop-phase-header');
+  const num = phaseId.split('-')[1];
+  const container = document.getElementById('ps-phase-' + num);
+  if (!header || !container) return;
+  const isOpen = header.getAttribute('aria-expanded') === 'true';
+  header.setAttribute('aria-expanded', String(!isOpen));
+  container.style.display = isOpen ? 'none' : '';
+}
+
+function resetSOP() {
+  sopState = {};
+  document.querySelectorAll('.sop-check').forEach(c => c.classList.remove('checked'));
+  document.querySelectorAll('.sop-step').forEach(s => { s.classList.remove('done'); s.setAttribute('aria-checked','false'); });
+  updateSOPProgress();
+  saveSOPState();
+}
+
+function saveSOPState() { try { localStorage.setItem('axisconf_sop', JSON.stringify(sopState)); } catch(e){} }
+function loadSOPState() {
+  try {
+    const saved = localStorage.getItem('axisconf_sop');
+    if (!saved) return;
+    sopState = JSON.parse(saved);
+    Object.entries(sopState).forEach(([id, checked]) => {
+      if (!checked) return;
+      const check = document.getElementById('sc-' + id);
+      const step = document.getElementById('step-' + id);
+      if (check) check.classList.add('checked');
+      if (step) { step.classList.add('done'); step.setAttribute('aria-checked','true'); }
+    });
+    updateSOPProgress();
+  } catch(e){}
+}
+
+// ═══════════════════════════════════════════════════════════
+// PATH VALIDATION
+// ═══════════════════════════════════════════════════════════
+function validatePath(input, warnId) {
+  const warn = document.getElementById(warnId);
+  if (!warn) return;
+  const val = input.value.trim();
+  if (!val) { warn.classList.remove('visible'); input.classList.remove('warn'); return; }
+  let msg = '';
+  if (OS === 'windows' && val.includes('/'))
+    msg = LANG === 'en' ? '⚠ Windows path with forward slashes detected. Use backslashes: C:\\Users\\...' : '⚠ Ruta con "/" detectada en Windows. Usar barras invertidas: C:\\Users\\...';
+  else if (OS !== 'windows' && /^[A-Za-z]:\\/.test(val))
+    msg = LANG === 'en' ? '⚠ Windows-style path detected. Use forward slashes: /Users/... or /home/...' : '⚠ Ruta estilo Windows detectada. Usar barras: /Users/... o /home/...';
+  warn.textContent = msg;
+  warn.classList.toggle('visible', !!msg);
+  input.classList.toggle('warn', !!msg);
+}
+
+function toggleMaxPort() {
+  const grp = document.getElementById('maxPortGroup');
+  if (grp) grp.style.display = document.getElementById('maxToggle').checked ? '' : 'none';
+}
+
+// ═══════════════════════════════════════════════════════════
+// CLIPBOARD
+// ═══════════════════════════════════════════════════════════
+function copyCode(id, btn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  navigator.clipboard.writeText(el.textContent || '').then(() => {
+    const lbl = LANG === 'en' ? 'COPIED ✓' : 'COPIADO ✓';
+    const orig = btn.innerHTML;
+    btn.innerHTML = lbl; btn.classList.add('copied');
+    setTimeout(() => { btn.innerHTML = orig; btn.classList.remove('copied'); }, 2000);
+  }).catch(() => {});
+}
+
+function copyAll() {
+  const ids = ['ps-out','sc-out','verify-out','vscode-out','session-out','power-out'];
+  const all = ids.map(id => {
+    const el = document.getElementById(id);
+    return el ? `\n# ══════ ${id.toUpperCase()} ══════\n${el.textContent}` : '';
+  }).join('\n');
+  navigator.clipboard.writeText(all).catch(() => {});
+}
+
+// ═══════════════════════════════════════════════════════════
+// EXPORT / IMPORT CONFIG
+// ═══════════════════════════════════════════════════════════
+function exportConfig() {
+  const cfg = {
+    projectPath: document.getElementById('projectPath').value,
+    dirtPath: document.getElementById('dirtPath').value,
+    includeMax: document.getElementById('maxToggle').checked,
+    maxPort: document.getElementById('maxPort').value,
+    os: OS, version: 5
+  };
+  const blob = new Blob([JSON.stringify(cfg, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'axis-config.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function importConfig(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const cfg = JSON.parse(e.target.result);
+      if (cfg.projectPath) document.getElementById('projectPath').value = cfg.projectPath;
+      if (cfg.dirtPath) document.getElementById('dirtPath').value = cfg.dirtPath;
+      if (typeof cfg.includeMax === 'boolean') { document.getElementById('maxToggle').checked = cfg.includeMax; toggleMaxPort(); }
+      if (cfg.maxPort) document.getElementById('maxPort').value = cfg.maxPort;
+    } catch(e) { alert(LANG === 'en' ? 'Error reading JSON file' : 'Error leyendo el archivo JSON'); }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
+
+// ═══════════════════════════════════════════════════════════
+// PATH UTILITIES
+// ═══════════════════════════════════════════════════════════
+function toBackslash(p) { return p.replace(/\//g, '\\'); }
+function toUnix(p) { return p.replace(/\\/g, '/'); }
+
+// ═══════════════════════════════════════════════════════════
+// CONFIG GENERATORS
+// ═══════════════════════════════════════════════════════════
+function buildBootTidal(includeMax, maxPort) {
+  const maxPart = includeMax
+    ? `\n    , oTargets = [superdirtTarget {oLatency = 0.05, oAddress = "127.0.0.1", oPort = 57120},\n                 superdirtTarget {oLatency = 0.05, oAddress = "127.0.0.1", oPort = ${maxPort}}]`
+    : '';
+  return `:set -XOverloadedStrings
+import Sound.Tidal.Boot
+
+main :: IO ()
+main = startTidal (superdirtTarget {oLatency = 0.05}) (defaultConfig${maxPart})`;
+}
+
+function buildPowerShell(winPath, includeMax, maxPort) {
+  const bootContent = buildBootTidal(includeMax, maxPort);
+  return `# AXIS CONFIGURATOR v5.2 — Windows PowerShell
+# Instalar BootTidal.hs sin BOM (UTF-8 sin Byte Order Mark)
+# NO ejecutar como Administrador · Win+X → Windows PowerShell
+
+$projectPath = "${winPath}"
+$bootPath    = Join-Path $projectPath "BootTidal.hs"
+
+# Crear directorio si no existe
+if (-not (Test-Path $projectPath)) {
+    New-Item -ItemType Directory -Path $projectPath -Force | Out-Null
+    Write-Host "Carpeta creada: $projectPath" -ForegroundColor Cyan
+}
+
+# Contenido del BootTidal.hs
+$bootContent = @'
+${bootContent}
+'@
+
+# Escribir SIN BOM usando System.IO.File
+$utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+[System.IO.File]::WriteAllText($bootPath, $bootContent, $utf8NoBom)
+
+Write-Host ""
+Write-Host "✓ BootTidal.hs instalado sin BOM en:" -ForegroundColor Green
+Write-Host "  $bootPath" -ForegroundColor White
+Write-Host ""
+Write-Host "Siguiente: ejecutar verify-bom.ps1 para confirmar integridad" -ForegroundColor Yellow`;
+}
+
+function buildBashInstall(unixPath, includeMax, maxPort) {
+  const bootContent = buildBootTidal(includeMax, maxPort);
+  return `#!/usr/bin/env bash
+# AXIS CONFIGURATOR v5.2 — bash install (macOS / Linux)
+# Instalar BootTidal.hs sin BOM
+
+PROJECT_PATH="${unixPath}"
+BOOT_PATH="$PROJECT_PATH/BootTidal.hs"
+
+# Crear directorio si no existe
+mkdir -p "$PROJECT_PATH"
+
+# Escribir BootTidal.hs (bash heredoc = sin BOM)
+cat > "$BOOT_PATH" << 'BOOTTIDAL_EOF'
+${bootContent}
+BOOTTIDAL_EOF
+
+echo ""
+echo "✓ BootTidal.hs instalado en: $BOOT_PATH"
+echo ""
+echo "Siguiente: bash verify-bom.sh para confirmar integridad"`;
+}
+
+function buildVerifyWindows(winPath) {
+  return `# verify-bom.ps1 — Verificar integridad de BootTidal.hs (sin BOM)
+
+$file   = "${winPath}\\BootTidal.hs"
+$bytes  = [System.IO.File]::ReadAllBytes($file)
+$first3 = "$($bytes[0]) $($bytes[1]) $($bytes[2])"
+
+Write-Host "Primeros 3 bytes: $first3"
+
+if ($first3 -eq "58 115 101") {
+    Write-Host "✓ SIN BOM — archivo correcto" -ForegroundColor Green
+} elseif ($first3 -eq "239 187 191") {
+    Write-Host "✕ BOM DETECTADO — volver a ejecutar install-boottidal.ps1" -ForegroundColor Red
+} else {
+    Write-Host "⚠ Bytes inesperados — verificar manualmente" -ForegroundColor Yellow
+}`;
+}
+
+function buildVerifyUnix(unixPath) {
+  return `#!/usr/bin/env bash
+# verify-bom.sh — Verificar integridad de BootTidal.hs
+
+FILE="${unixPath}/BootTidal.hs"
+BYTES=$(od -An -N3 -tu1 "$FILE" | tr -s ' ' | xargs)
+
+echo "Primeros 3 bytes: $BYTES"
+
+if echo "$BYTES" | grep -qw "58"; then
+    echo "✓ SIN BOM — archivo correcto (inicia con 0x3A = ':')"
+elif echo "$BYTES" | grep -q "^239"; then
+    echo "✕ BOM DETECTADO — volver a ejecutar install-boottidal.sh"
+else
+    echo "⚠ Bytes inesperados — verificar manualmente: $BYTES"
+fi`;
+}
+
+function buildSCBoot(dirtPath) {
+  const dirtLine = dirtPath
+    ? `~dirt.loadSoundFiles("${dirtPath}/**");`
+    : `~dirt.loadSoundFiles; // carga todos los samples del directorio de Quarks`;
+  return `(
+// ═══════════════════════════════════════════════════════════
+// AXIS CONFIGURATOR v5.2 — SuperCollider startup.scd
+// Memoria aumentada para evitar "exceeded interconnect buffers"
+// Ejecutar: seleccionar TODO (Ctrl+A) → Ctrl+Enter
+// ═══════════════════════════════════════════════════════════
+
+s.options.numBuffers         = 1024 * 4;   // 4096 buffers
+s.options.memSize            = 8192 * 64;  // ~512MB heap
+s.options.numWireBufs        = 512;        // (default 64)
+s.options.maxNodes           = 1024 * 32;  // 32768 nodos
+s.options.numOutputBusChannels = 2;
+s.options.numInputBusChannels  = 2;
+
+s.waitForBoot {
+    ~dirt = SuperDirt(2, s);
+    ${dirtLine}
+    ~dirt.start(57120, [0, 0]);
+    s.sync;
+    "═══════════════════════════════════════════════".postln;
+    "AXIS CONFIGURATOR v5.2 — SuperDirt: Online".postln;
+    "Tidal puede conectar en port 57120".postln;
+    "═══════════════════════════════════════════════".postln;
+}
+)`;
+}
+
+function buildVSCodeSettings() {
+  return `{
+  // AXIS CONFIGURATOR v5.2 — VSCode settings.json
+  // Pegar dentro del objeto raíz {} en: Ctrl+Shift+P → "Open User Settings (JSON)"
+  "files.associations": {
+    "*.tidal": "haskell"
+  },
+  "tidalcycles.ghciPath": "ghci",
+  "files.encoding": "utf8",
+  "files.autoGuessEncoding": false,
+  "[haskell]": {
+    "editor.tabSize": 2,
+    "editor.detectIndentation": false
+  }
+}`;
+}
+
+function buildSession(projectPath) {
+  const pLabel = projectPath || 'TuProyecto';
+  return `-- ═══════════════════════════════════════════════════════════
+-- sesion.tidal — AXIS CONFIGURATOR v5.2
+-- Proyecto: ${pLabel}
+-- Evaluar líneas individuales con Shift+Enter
+-- ═══════════════════════════════════════════════════════════
+
+-- ═══ DECLARAR MACROS para Max for Live ═══
+let macroA = pF "macroA"
+let macroB = pF "macroB"
+
+-- ═══ TEST BÁSICO — debe sonar ═══
+d1 $ s "bd sd"
+
+-- ═══ TEST CON MACROS OSC ═══
+d1 $ s "bd" # macroA (slow 4 $ sine) # macroB rand
+
+-- ═══ PATRÓN DE EJEMPLO ═══
+d1 $ s "bd sd hh*4 ~" |+ n (irand 3)
+
+-- ═══ CONTROL DE SESIÓN ═══
+hush               -- silenciar todo
+setcps (120/60/4)  -- tempo a 120 BPM`;
+}
+
+function buildPowerManagement() {
+  if (OS === 'windows') {
+    return `# prevent-sleep.ps1 — Prevenir suspensión durante sesiones largas
+# Windows PowerShell — ejecutar ANTES de iniciar SuperCollider
+# Ctrl+C para detener
+
+Add-Type -AssemblyName System.Windows.Forms
+
+Write-Host "Anti-sleep activo. Ctrl+C para detener." -ForegroundColor Green
+
+while ($true) {
+    [System.Windows.Forms.SendKeys]::SendWait("{SCROLLLOCK}")
+    [System.Windows.Forms.SendKeys]::SendWait("{SCROLLLOCK}")
+    Start-Sleep -Seconds 55
+    Write-Host "$(Get-Date -Format 'HH:mm') sesion activa" -ForegroundColor DarkCyan
+}`;
+  } else if (OS === 'macos') {
+    return `#!/usr/bin/env bash
+# prevent-sleep.sh — Prevenir suspensión en macOS
+# Requiere macOS 10.8+
+
+caffeinate -d -i -m -s &
+CAFE_PID=$!
+echo "✓ caffeinate activo (PID: $CAFE_PID)"
+echo "Para detener: kill $CAFE_PID"
+echo "O presionar Ctrl+C"
+
+# Esperar señal
+wait $CAFE_PID`;
+  } else {
+    return `#!/usr/bin/env bash
+# prevent-sleep.sh — Prevenir suspensión en Linux (systemd)
+
+systemctl --user mask \\
+  sleep.target \\
+  suspend.target \\
+  hibernate.target \\
+  hybrid-sleep.target 2>/dev/null
+
+echo "✓ Suspensión deshabilitada para esta sesión."
+echo ""
+echo "Para restaurar al finalizar:"
+echo "systemctl --user unmask sleep.target suspend.target hibernate.target hybrid-sleep.target"`;
+  }
+}
+
+function buildReadme(projectPath) {
+  const date = new Date().toLocaleDateString(LANG === 'en' ? 'en-US' : 'es-AR');
+  return `AXIS CONFIGURATOR v5.2 — README
+Generated: ${date}
+Project path: ${projectPath}
+OS detected: ${OS.toUpperCase()}
+
+ORDER OF EXECUTION:
+1. Run installation script (install-boottidal.ps1 / .sh)
+2. Open startup.scd in SuperCollider
+3. Select ALL (Ctrl+A / Cmd+A) and run (Ctrl+Enter / Cmd+Enter)
+4. Wait for "SuperDirt: Online" in the SC console
+5. Open sesion.tidal in VSCode
+6. Ctrl+Shift+P → "TidalCycles: Start Tidal"
+7. Wait for "Connected to SuperDirt." in the Output panel
+8. Evaluate: d1 $ s "bd sd" with Shift+Enter — should produce sound
+
+DOCS:
+- TidalCycles: https://tidalcycles.org
+- SuperCollider: https://supercollider.github.io
+- SuperDirt: https://github.com/musikinformatik/SuperDirt
+
+AXIS CONFIGURATOR v5.2 — CC BY-NC-SA 4.0 — Free for the Live Coding community — by Axis Opus (github.com/ouroboros99)`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// MAIN GENERATE
+// ═══════════════════════════════════════════════════════════
+function generateConfigs() {
+  const projectPathRaw = document.getElementById('projectPath').value.trim();
+  const dirtPathRaw    = document.getElementById('dirtPath').value.trim();
+  const includeMax     = document.getElementById('maxToggle').checked;
+  const maxPort        = parseInt(document.getElementById('maxPort').value) || 8000;
+
+  if (!projectPathRaw) {
+    const inp = document.getElementById('projectPath');
+    inp.classList.add('error');
+    inp.focus();
+    setTimeout(() => inp.classList.remove('error'), 900);
+    return;
+  }
+
+  const winPath  = OS === 'windows' ? toBackslash(projectPathRaw) : projectPathRaw;
+  const unixPath = toUnix(projectPathRaw);
+  const dirtUnix = dirtPathRaw ? toUnix(dirtPathRaw) : '';
+
+  if (OS === 'windows') {
+    document.getElementById('ps-out').textContent      = buildPowerShell(winPath, includeMax, maxPort);
+    document.getElementById('verify-out').textContent  = buildVerifyWindows(winPath);
+  } else {
+    document.getElementById('ps-out').textContent      = buildBashInstall(unixPath, includeMax, maxPort);
+    document.getElementById('verify-out').textContent  = buildVerifyUnix(unixPath);
+  }
+  document.getElementById('sc-out').textContent      = buildSCBoot(dirtUnix);
+  document.getElementById('vscode-out').textContent  = buildVSCodeSettings();
+  document.getElementById('session-out').textContent = buildSession(projectPathRaw);
+  document.getElementById('power-out').textContent   = buildPowerManagement();
+
+  const results = document.getElementById('results');
+  results.classList.add('visible');
+  setTimeout(() => results.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+}
+
+// ═══════════════════════════════════════════════════════════
+// ZIP DOWNLOAD
+// ═══════════════════════════════════════════════════════════
+async function generateZip() {
+  const projectPathRaw = document.getElementById('projectPath').value.trim();
+  const dirtPathRaw    = document.getElementById('dirtPath').value.trim();
+  const includeMax     = document.getElementById('maxToggle').checked;
+  const maxPort        = parseInt(document.getElementById('maxPort').value) || 8000;
+
+  if (!projectPathRaw) { generateConfigs(); return; }
+
+  const winPath  = OS === 'windows' ? toBackslash(projectPathRaw) : projectPathRaw;
+  const unixPath = toUnix(projectPathRaw);
+  const dirtUnix = dirtPathRaw ? toUnix(dirtPathRaw) : '';
+
+  const zip = new JSZip();
+  zip.file('BootTidal.hs',      buildBootTidal(includeMax, maxPort));
+  zip.file('startup.scd',       buildSCBoot(dirtUnix));
+  zip.file('sesion.tidal',      buildSession(projectPathRaw));
+  zip.file('settings.json',     buildVSCodeSettings());
+  zip.file('README-axis.txt',   buildReadme(projectPathRaw));
+
+  if (OS === 'windows') {
+    zip.file('install-boottidal.ps1', buildPowerShell(winPath, includeMax, maxPort));
+    zip.file('verify-bom.ps1',        buildVerifyWindows(winPath));
+    zip.file('prevent-sleep.ps1',     buildPowerManagement());
+  } else {
+    zip.file('install-boottidal.sh',  buildBashInstall(unixPath, includeMax, maxPort));
+    zip.file('verify-bom.sh',         buildVerifyUnix(unixPath));
+    zip.file('prevent-sleep.sh',      buildPowerManagement());
+  }
+
+  try {
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'axis-config-v5.zip';
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch(e) {
+    alert('Error generating ZIP: ' + e.message);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+(function init() {
+  const osBadge = document.getElementById('os-badge');
+  if (osBadge) osBadge.textContent = OS_LABELS[OS];
+
+  applyLangSVG('es');
+
+  try {
+    const savedLang = localStorage.getItem('axisconf_lang');
+    if (savedLang && (savedLang === 'en' || savedLang === 'es')) setLang(savedLang);
+  } catch(e){}
+
+  try {
+    if (localStorage.getItem('axisconf_dim') === '1') {
+      document.body.classList.add('dim-mode');
+      const btn = document.getElementById('btnDim');
+      if (btn) btn.classList.add('active');
+    }
+  } catch(e){}
+
+  loadSOPState();
+
+  try {
+    if (!localStorage.getItem('axisconf_tour_done')) {
+      setTimeout(openTour, 600);
+    }
+  } catch(e){}
+
+  document.querySelectorAll('.sop-step').forEach(step => {
+    step.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        step.click();
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

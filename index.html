@@ -320,7 +320,7 @@ body.lang-en .svg-lang-en{display:inline}
 <body>
 
 <!-- ██████ TOUR OVERLAY ██████ -->
-<div class="tour-overlay" id="tour-overlay">
+<div class="tour-overlay hidden" id="tour-overlay" role="dialog" aria-modal="true" aria-label="Tour de bienvenida / Welcome tour">
   <div class="tour-box">
     <!-- Step 1 -->
     <div class="tour-step active" id="tour-s1">
@@ -770,7 +770,7 @@ body.lang-en .svg-lang-en{display:inline}
 
   <div class="sop-header-row">
     <div class="sop-progress-wrap">
-      <div class="sop-progress-bar-bg" role="progressbar" aria-valuemin="0" aria-valuemax="100" id="sop-progress-bar-container">
+      <div class="sop-progress-bar-bg" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="sop-progress-bar-container">
         <div class="sop-progress-bar" id="sop-progress-bar"></div>
       </div>
       <span class="sop-progress-label" id="sop-progress-label">0 / 17</span>
@@ -1307,12 +1307,17 @@ function toggleDim() {
 // ═══════════════════════════════════════════════════════════
 // TOUR
 // ═══════════════════════════════════════════════════════════
-let currentTourStep = 1;
+let currentTourStep = 0;
 const TOUR_TOTAL = 4;
 
 function openTour() {
   document.getElementById('tour-overlay').classList.remove('hidden');
   tourStep(1);
+  // Mover foco al primer botón del tour para accesibilidad
+  setTimeout(() => {
+    const firstBtn = document.querySelector('#tour-overlay .tour-btn, #tour-overlay .tour-skip-btn');
+    if (firstBtn) firstBtn.focus();
+  }, 50);
 }
 function closeTour() {
   document.getElementById('tour-overlay').classList.add('hidden');
@@ -1333,8 +1338,8 @@ function tourStep(n) {
     next.onclick = isLast ? closeTour : tourNext;
   }
 }
-function tourNext() { if (currentTourStep < TOUR_TOTAL) tourStep(currentTourStep+1); else closeTour(); }
-function tourPrev() { if (currentTourStep > 1) tourStep(currentTourStep-1); }
+function tourNext() { if (currentTourStep < TOUR_TOTAL) tourStep(currentTourStep + 1); else closeTour(); }
+function tourPrev() { if (currentTourStep > 1) tourStep(currentTourStep - 1); }
 
 // ═══════════════════════════════════════════════════════════
 // CHANGELOG MODAL
@@ -1584,7 +1589,6 @@ Write-Host "Siguiente: ejecutar verify-bom.ps1 para confirmar integridad" -Foreg
 }
 
 function buildBashInstall(unixPath, includeMax, maxPort, bootContent = buildBootTidal(includeMax, maxPort)) {
-  const bootContent = buildBootTidal(includeMax, maxPort);
   return `#!/usr/bin/env bash
 # AXIS CONFIGURATOR v5.2 — bash install (macOS / Linux)
 # Instalar BootTidal.hs sin BOM

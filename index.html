@@ -1553,8 +1553,7 @@ main :: IO ()
 main = startTidal (superdirtTarget {oLatency = 0.05}) (defaultConfig${maxPart})`;
 }
 
-function buildPowerShell(winPath, includeMax, maxPort) {
-  const bootContent = buildBootTidal(includeMax, maxPort);
+function buildPowerShell(winPath, includeMax, maxPort, bootContent = buildBootTidal(includeMax, maxPort)) {
   return `# AXIS CONFIGURATOR v5.2 — Windows PowerShell
 # Instalar BootTidal.hs sin BOM (UTF-8 sin Byte Order Mark)
 # NO ejecutar como Administrador · Win+X → Windows PowerShell
@@ -1584,7 +1583,7 @@ Write-Host ""
 Write-Host "Siguiente: ejecutar verify-bom.ps1 para confirmar integridad" -ForegroundColor Yellow`;
 }
 
-function buildBashInstall(unixPath, includeMax, maxPort) {
+function buildBashInstall(unixPath, includeMax, maxPort, bootContent = buildBootTidal(includeMax, maxPort)) {
   const bootContent = buildBootTidal(includeMax, maxPort);
   return `#!/usr/bin/env bash
 # AXIS CONFIGURATOR v5.2 — bash install (macOS / Linux)
@@ -1836,19 +1835,21 @@ async function generateZip() {
   generateConfigs(); // sincroniza outputs en pantalla antes del ZIP
   const s = readFormState();
 
+  const boot = buildBootTidal(s.includeMax, s.maxPort);
+
   const zip = new JSZip();
-  zip.file('BootTidal.hs',    buildBootTidal(s.includeMax, s.maxPort));
+  zip.file('BootTidal.hs',    boot);
   zip.file('startup.scd',     buildSCBoot(s.dirtUnix));
   zip.file('sesion.tidal',    buildSession(s.projectPathRaw));
   zip.file('settings.json',   buildVSCodeSettings());
   zip.file('README-axis.txt', buildReadme(s.projectPathRaw));
 
   if (OS === 'windows') {
-    zip.file('install-boottidal.ps1', buildPowerShell(s.winPath, s.includeMax, s.maxPort));
+    zip.file('install-boottidal.ps1', buildPowerShell(s.winPath, s.includeMax, s.maxPort, boot));
     zip.file('verify-bom.ps1',        buildVerifyWindows(s.winPath));
     zip.file('prevent-sleep.ps1',     buildPowerManagement());
   } else {
-    zip.file('install-boottidal.sh',  buildBashInstall(s.unixPath, s.includeMax, s.maxPort));
+    zip.file('install-boottidal.sh',  buildBashInstall(s.unixPath, s.includeMax, s.maxPort, boot));
     zip.file('verify-bom.sh',         buildVerifyUnix(s.unixPath));
     zip.file('prevent-sleep.sh',      buildPowerManagement());
   }

@@ -1,0 +1,10 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Node (por si en el futuro agregás algo)
+node_modules/
+
+# Archivos de configuración locales del usuario
+*.json
+!settings.json

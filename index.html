@@ -12,10 +12,6 @@
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://ouroboros99.github.io/axis-configurator/">
 <!-- OPEN GRAPH -->
-<meta name="description" content="Herramienta offline que resuelve el infierno de configuración de TidalCycles + SuperCollider + Max for Live. Zero backend.">
-<meta name="keywords" content="tidalcycles, supercollider, superdirt, max for live, live coding, boottidal, configurador, windows, macos, linux, axis opus">
-<meta name="author" content="Axis Opus">
-
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://ouroboros99.github.io/axis-configurator/">
 <meta property="og:title" content="AXIS CONFIGURATOR v5.2">
@@ -1254,9 +1250,11 @@ setcps (140/60/4) -- tempo a 140 BPM</pre>
 // OS DETECTION
 // ═══════════════════════════════════════════════════════════
 const OS = (function detectOS() {
-  const ua = navigator.userAgent, pl = navigator.platform || '';
-  if (/Win/i.test(pl) || /Windows/i.test(ua)) return 'windows';
-  if (/Mac/i.test(pl) || /macOS|Macintosh/i.test(ua)) return 'macos';
+  // userAgentData disponible en Chrome/Edge modernos; platform como fallback
+  const plHint = navigator.userAgentData?.platform || navigator.platform || '';
+  const ua     = navigator.userAgent;
+  if (/Win/i.test(plHint)  || /Windows/i.test(ua))    return 'windows';
+  if (/Mac/i.test(plHint)  || /macOS|Macintosh/i.test(ua)) return 'macos';
   return 'linux';
 })();
 
@@ -1791,36 +1789,38 @@ AXIS CONFIGURATOR v5.2 — CC BY-NC-SA 4.0 — Free for the Live Coding communit
 }
 
 // ═══════════════════════════════════════════════════════════
-// MAIN GENERATE
+// FORM STATE
 // ═══════════════════════════════════════════════════════════
-function generateConfigs() {
+function readFormState() {
   const projectPathRaw = document.getElementById('projectPath').value.trim();
   const dirtPathRaw    = document.getElementById('dirtPath').value.trim();
   const includeMax     = document.getElementById('maxToggle').checked;
   const maxPort        = parseInt(document.getElementById('maxPort').value) || 8000;
+  const winPath        = OS === 'windows' ? toBackslash(projectPathRaw) : projectPathRaw;
+  const unixPath       = toUnix(projectPathRaw);
+  const dirtUnix       = dirtPathRaw ? toUnix(dirtPathRaw) : '';
+  return { projectPathRaw, dirtPathRaw, includeMax, maxPort, winPath, unixPath, dirtUnix };
+}
 
-  if (!projectPathRaw) {
+function generateConfigs() {
+  const s = readFormState();
+  if (!s.projectPathRaw) {
     const inp = document.getElementById('projectPath');
     inp.classList.add('error');
     inp.focus();
     setTimeout(() => inp.classList.remove('error'), 900);
     return;
   }
-
-  const winPath  = OS === 'windows' ? toBackslash(projectPathRaw) : projectPathRaw;
-  const unixPath = toUnix(projectPathRaw);
-  const dirtUnix = dirtPathRaw ? toUnix(dirtPathRaw) : '';
-
   if (OS === 'windows') {
-    document.getElementById('ps-out').textContent      = buildPowerShell(winPath, includeMax, maxPort);
-    document.getElementById('verify-out').textContent  = buildVerifyWindows(winPath);
+    document.getElementById('ps-out').textContent     = buildPowerShell(s.winPath, s.includeMax, s.maxPort);
+    document.getElementById('verify-out').textContent = buildVerifyWindows(s.winPath);
   } else {
-    document.getElementById('ps-out').textContent      = buildBashInstall(unixPath, includeMax, maxPort);
-    document.getElementById('verify-out').textContent  = buildVerifyUnix(unixPath);
+    document.getElementById('ps-out').textContent     = buildBashInstall(s.unixPath, s.includeMax, s.maxPort);
+    document.getElementById('verify-out').textContent = buildVerifyUnix(s.unixPath);
   }
-  document.getElementById('sc-out').textContent      = buildSCBoot(dirtUnix);
+  document.getElementById('sc-out').textContent      = buildSCBoot(s.dirtUnix);
   document.getElementById('vscode-out').textContent  = buildVSCodeSettings();
-  document.getElementById('session-out').textContent = buildSession(projectPathRaw);
+  document.getElementById('session-out').textContent = buildSession(s.projectPathRaw);
   document.getElementById('power-out').textContent   = buildPowerManagement();
 
   const results = document.getElementById('results');
@@ -1832,38 +1832,31 @@ function generateConfigs() {
 // ZIP DOWNLOAD
 // ═══════════════════════════════════════════════════════════
 async function generateZip() {
-  const projectPathRaw = document.getElementById('projectPath').value.trim();
-  const dirtPathRaw    = document.getElementById('dirtPath').value.trim();
-  const includeMax     = document.getElementById('maxToggle').checked;
-  const maxPort        = parseInt(document.getElementById('maxPort').value) || 8000;
-
-  if (!projectPathRaw) { generateConfigs(); return; }
-
-  const winPath  = OS === 'windows' ? toBackslash(projectPathRaw) : projectPathRaw;
-  const unixPath = toUnix(projectPathRaw);
-  const dirtUnix = dirtPathRaw ? toUnix(dirtPathRaw) : '';
+  if (!document.getElementById('projectPath').value.trim()) { generateConfigs(); return; }
+  generateConfigs(); // sincroniza outputs en pantalla antes del ZIP
+  const s = readFormState();
 
   const zip = new JSZip();
-  zip.file('BootTidal.hs',      buildBootTidal(includeMax, maxPort));
-  zip.file('startup.scd',       buildSCBoot(dirtUnix));
-  zip.file('sesion.tidal',      buildSession(projectPathRaw));
-  zip.file('settings.json',     buildVSCodeSettings());
-  zip.file('README-axis.txt',   buildReadme(projectPathRaw));
+  zip.file('BootTidal.hs',    buildBootTidal(s.includeMax, s.maxPort));
+  zip.file('startup.scd',     buildSCBoot(s.dirtUnix));
+  zip.file('sesion.tidal',    buildSession(s.projectPathRaw));
+  zip.file('settings.json',   buildVSCodeSettings());
+  zip.file('README-axis.txt', buildReadme(s.projectPathRaw));
 
   if (OS === 'windows') {
-    zip.file('install-boottidal.ps1', buildPowerShell(winPath, includeMax, maxPort));
-    zip.file('verify-bom.ps1',        buildVerifyWindows(winPath));
+    zip.file('install-boottidal.ps1', buildPowerShell(s.winPath, s.includeMax, s.maxPort));
+    zip.file('verify-bom.ps1',        buildVerifyWindows(s.winPath));
     zip.file('prevent-sleep.ps1',     buildPowerManagement());
   } else {
-    zip.file('install-boottidal.sh',  buildBashInstall(unixPath, includeMax, maxPort));
-    zip.file('verify-bom.sh',         buildVerifyUnix(unixPath));
+    zip.file('install-boottidal.sh',  buildBashInstall(s.unixPath, s.includeMax, s.maxPort));
+    zip.file('verify-bom.sh',         buildVerifyUnix(s.unixPath));
     zip.file('prevent-sleep.sh',      buildPowerManagement());
   }
 
   try {
     const blob = await zip.generateAsync({ type: 'blob' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
     a.href = url; a.download = 'axis-config-v5.zip';
     document.body.appendChild(a); a.click();
     document.body.removeChild(a);
